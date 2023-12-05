@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 from sympy import *
 
-def create_simulation_date(
+def create_simulation_data(
     function: str,
     num_features: int = 1,
     num_noises: int = 10,
@@ -66,13 +66,13 @@ def create_simulation_date(
         return X, y_true, y_noise
     
 if __name__ == '__main__':
-    function = 'a'
-    num_features = 1
-    num_noises = 10
+    function = 'E**a*sin(b)-cos(d)**3/(c**2+1)'
+    num_features = 4
+    num_noises = 0
     num_data = 10000
     X_var = 0.33
     y_var = 0.01
-    X, y_true, y_noise, derivatives, integrations = create_simulation_date(function, num_features, num_noises, num_data, X_var, y_var, enable_der=True, enable_int=True)
+    X, y_true, y_noise, derivatives, integrations = create_simulation_data(function, num_features, num_noises, num_data, X_var, y_var, enable_der=True, enable_int=True)
     print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape, 
           'derivatives', len(derivatives), derivatives[0].shape, 
           'integrations', len(integrations), integrations[0].shape)

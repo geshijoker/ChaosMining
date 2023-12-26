@@ -12,8 +12,7 @@ def create_simulation_data(
     num_data: int = 10000,
     X_var: float = 0.33,
     y_var: float = 0.01,
-    enable_der: bool = False,
-    enable_int: bool = False,
+    n_steps: int = 20,
     ):
     """ Creating simulation data with noisy (normal distribution) features and labels.
         Args:
@@ -23,6 +22,7 @@ def create_simulation_data(
             num_data: number of vectorized data to create
             X_var: the scale of the variance of features 
             y_var: the scale of noises adding to targets
+            n_steps: the number of steps to integrate the gradients
         Return:
             X: the features
             y_true: the ground truth targets
@@ -50,30 +50,35 @@ def create_simulation_data(
         base_true = exp_func(*baseline)
         intercepts.append(y_true-base_true)
     
-    if enable_der:
-        derivatives = []
-        for ind in range(num_features):
-            derivative = diff(expression, variables[ind])
-            der_func = lambdify(variables[:num_features], derivative, 'numpy')
-            der_true = der_func(*X_features)+np.zeros(num_data)
-            derivatives.append(der_true)
+    derivatives = []
+    for ind in range(num_features):
+        derivative = diff(expression, variables[ind])
+        der_func = lambdify(variables[:num_features], derivative, 'numpy')
+        der_true = der_func(*X_features)+np.zeros(num_data)
+        derivatives.append(der_true)
     
-    if enable_int:
-        integrations = []
+#     integrations = []
+#     for ind in range(num_features):
+#         integration = integrate(expression, variables[ind])
+#         int_func = lambdify(variables[:num_features], integration, 'numpy')
+#         baseline_features = copy.deepcopy(X_features)
+#         baseline_features[ind] = np.zeros_like(baseline_features[ind])
+#         int_true = int_func(*X_features)-int_func(*baseline_features)+np.zeros(num_data)
+#         integrations.append(int_true)
+
+    integrations = [[] for ind in range(num_features)]
+    for itr in range(20):
+        baseline = [np.zeros(num_data)+X_features[ind]*itr/50 for ind in range(num_features)]
+        base_true = exp_func(*baseline)
         for ind in range(num_features):
-            integration = integrate(expression, variables[ind])
-            int_func = lambdify(variables[:num_features], integration, 'numpy')
-            int_true = int_func(*X_features)+np.zeros(num_data)
-            integrations.append(int_true)
+            int_features = copy.deepcopy(baseline)
+            int_features[ind] = baseline[ind]+X_features[ind]/50
+            int_true = exp_func(*int_features)
+            integrations[ind].append(int_true-base_true)
+    integrations = [np.stack(integrations[ind], axis=1) for ind in range(num_features)]
+    integrations = [integrations[ind].mean(axis=-1) for ind in range(num_features)]
             
-    if enable_der and enable_int:
-        return X, np.expand_dims(y_true,-1), y_noise, intercepts, derivatives, integrations
-    elif enable_der:
-        return X, np.expand_dims(y_true,-1), y_noise, intercepts, derivatives
-    elif enable_int:
-        return X, np.expand_dims(y_true,-1), y_noise, intercepts, integrations
-    else:
-        return X, np.expand_dims(y_true,-1), y_noise, intercepts
+    return X, np.expand_dims(y_true,-1), y_noise, intercepts, derivatives, integrations
     
 def read_formulas(file_path):
     formulas = []
@@ -91,7 +96,7 @@ if __name__ == '__main__':
     num_data = 10000
     X_var = 0.33
     y_var = 0.01
-    X, y_true, y_noise, intercepts, derivatives, integrations = create_simulation_data(function, num_features, num_noises, num_data, X_var, y_var, enable_der=True, enable_int=True)
+    X, y_true, y_noise, intercepts, derivatives, integrations = create_simulation_data(function, num_features, num_noises, num_data, X_var, y_var)
     print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape, 
           'intercepts', len(intercepts), intercepts[0].shape,
           'derivatives', len(derivatives), derivatives[0].shape, 

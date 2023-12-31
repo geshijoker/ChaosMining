@@ -22,24 +22,26 @@ def parse_argument():
                         help='Number of noisy features')
     parser.add_argument('--num_data', type=int, default=10000,
                         help='Number of data generated')
+    parser.add_argument('--num_steps', type=int, default=20,
+                        help='Number of steps to calculate integrated gradients')
     parser.add_argument('--X_var', type=float, default=0.33,
                         help='Variance of X distribution')
     parser.add_argument('--ny_var', type=float, default=0.0,
                         help='Variance of noise added to y distribution')
-    parser.add_argument('--num_epochs', type=int, default=100,
+    parser.add_argument('--num_epochs', type=int, default=1000,
                         help='the number of epochs for training')
     parser.add_argument('--arc_depth', type=int, default=3,
                         help='Number of hidden layers')
     parser.add_argument('--arc_width', type=int, default=100,
                         help='Number of neurons in each layer')
-    parser.add_argument('--optimizer', type=str, default='SGD', choices=['SGD', 'Adam'], 
+    parser.add_argument('--optimizer', type=str, default='Adam', choices=['Adam', 'SGD'], 
                         help='Type of optimizer')
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Learning rate for training')
     parser.add_argument('--dropout', type=float, default=0.0,
                         help='Dropout rate (float in the range [0, 1])')
-    parser.add_argument('--benchmark', action='store_true',
-                        help='Using benchmark algorithms')
+    parser.add_argument('--deterministic', action='store_true',
+                        help='Using deterministic mode and disable benchmark algorithms')
     parser.add_argument('--debug', action='store_true',
                         help='Using debug mode')
 

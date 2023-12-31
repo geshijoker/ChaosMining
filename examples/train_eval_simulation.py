@@ -20,8 +20,10 @@ from torch.optim import lr_scheduler
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
-from chaosmining import parse_argument
+sys.path.append("/home/geshi/ChaosMining")
+
 from chaosmining.data_utils import create_simulation_data, read_formulas
+from chaosmining.simulation import parse_argument, functions
 from chaosmining.simulation.models import MLPRegressor
 from chaosmining.utils import check_make_dir
 
@@ -32,7 +34,7 @@ from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-python examples/train_eval_simulation.py -d data/symbolic_simulation/formula.csv -e exp/simulation/ -n 2 -s 9999 --deterministic --debug
+python examples/train_eval_simulation.py -d data/symbolic_simulation/formula.csv -e runs/simulation/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
 """
 
 # load and parse argument
@@ -74,7 +76,7 @@ if args.deterministic:
     torch.backends.cudnn.benchmark = False
 else:
     torch.backends.cudnn.deterministic = False
-     torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.benchmark = True
     
 if args.debug:
     torch.autograd.set_detect_anomaly(True)
@@ -83,7 +85,7 @@ else:
     
 test_ratio = args.test_ratio
 loss_name = args.loss
-optmizer_name = args.optmizer
+optimizer_name = args.optimizer
 lr = args.learning_rate
 num_epochs = args.num_epochs
 num_data = args.num_data
@@ -93,6 +95,7 @@ y_var = args.ny_var
 arc_depth = args.arc_depth
 arc_width = args.arc_width
 dropout = args.dropout
+n_steps = args.num_steps
 
 formulas = read_formulas(args.data)
 hidden_layer_sizes = [arc_width]*arc_depth
@@ -119,16 +122,18 @@ def train(model, dataloader, num_epochs, optimizer):
         pbar.set_postfix(loss = '%.3f' % running_loss)
     return running_loss
 
+writer = SummaryWriter(log_path)
+
 for index, formula in enumerate(formulas):
 
     function = formula[1]
     num_features = formula[0]
     
-    X, y_true, y_noise, intercepts, derivatives, integrations = create_simulation_data(function, num_features, num_noises, num_data, X_var, y_var, enable_der=True, enable_int=True)
-print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape, 
-      'intercepts', len(intercepts), intercepts[0].shape,
-      'derivatives', len(derivatives), derivatives[0].shape, 
-      'integrations', len(integrations), integrations[0].shape)
+    X, y_true, y_noise, intercepts, derivatives, integrations = create_simulation_data(function, num_features, num_noises, num_data, X_var, y_var, n_steps = n_steps)
+    print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape, 
+          'intercepts', len(intercepts), intercepts[0].shape,
+          'derivatives', len(derivatives), derivatives[0].shape, 
+          'integrations', len(integrations), integrations[0].shape)
 
     intercepts = np.stack(intercepts, axis=1)
     derivatives = np.stack(derivatives, axis=1)
@@ -153,13 +158,13 @@ print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape,
     model.train()
 
     criterion = getattr(nn, loss_name)(reduction='mean')
-    optimizer = getattr(optim, optmizer_name)(model.parameters(), lr=lr)
+    optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
 
     print('Starting training loop; initial compile can take a while...')
     since = time.time()
     model.train()   # Set model to evaluate mode
 
-    loss = train(model, dataloader, num_epochs, optimizer)
+    loss = train(model, train_loader, num_epochs, optimizer)
     time_elapsed = time.time() - since
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {loss:3f}')
     
@@ -175,5 +180,21 @@ print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape,
     dl_attr_test = dl.attribute(Tensor(X_test).to(device))
     fa_attr_test = fa.attribute(Tensor(X_test).to(device))
     
-#     with SummaryWriter(log_path) as w:
-#         w.add_hparams({'formula_id':index}, test_stats)
+    topk_inds = functions.abs_argmax_topk(dl_attr_test.detach().cpu().numpy(), num_features)
+    
+    mean_abs_y_diff, std_abs_y_diff = functions.mean_std_absolute_error(y_pred, y_true_test)
+    Pred_score = functions.uniformity_score(y_pred, y_true_test)
+    DeepLift_score = functions.top_features_score(topk_inds, num_features)
+    FA_score = functions.uniformity_score(functions.normalize_attr(fa_attr_test.detach().cpu().numpy())[:,:num_features], \
+                                          functions.normalize_attr(intercepts_test)[:,:num_features])
+    Salienc_score = functions.uniformity_score(functions.normalize_attr(sa_attr_test.detach().cpu().numpy())[:,:num_features], \
+                                               functions.normalize_attr(derivatives_test)[:,:num_features])
+    IG_score = functions.uniformity_score(functions.normalize_attr(ig_attr_test.detach().cpu().numpy())[:,:num_features], \
+                                          functions.normalize_attr(integrations_test)[:,:num_features])
+    
+    hparam_dict = {'formula_id':index, 'num_features':num_features, 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
+    metric_dict = {'Pred':Pred_score, 'DeepLift':DeepLift_score, 'FA':FA_score, 'Saliency':Salienc_score, 'IG':IG_score}
+    writer.add_hparams({'formula_id':index}, metric_dict)
+
+writer.flush()
+writer.close()

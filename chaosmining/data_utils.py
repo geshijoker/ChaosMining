@@ -67,16 +67,16 @@ def create_simulation_data(
 #         integrations.append(int_true)
 
     integrations = [[] for ind in range(num_features)]
-    for itr in range(20):
-        baseline = [np.zeros(num_data)+X_features[ind]*itr/50 for ind in range(num_features)]
+    for itr in range(n_steps):
+        baseline = [np.zeros(num_data)+X_features[ind]*itr/n_steps for ind in range(num_features)]
         base_true = exp_func(*baseline)
         for ind in range(num_features):
             int_features = copy.deepcopy(baseline)
-            int_features[ind] = baseline[ind]+X_features[ind]/50
+            int_features[ind] = baseline[ind]+X_features[ind]/n_steps
             int_true = exp_func(*int_features)
             integrations[ind].append(int_true-base_true)
     integrations = [np.stack(integrations[ind], axis=1) for ind in range(num_features)]
-    integrations = [integrations[ind].mean(axis=-1) for ind in range(num_features)]
+    integrations = [integrations[ind].sum(axis=-1) for ind in range(num_features)]
             
     return X, np.expand_dims(y_true,-1), y_noise, intercepts, derivatives, integrations
     

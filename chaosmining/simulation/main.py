@@ -34,8 +34,7 @@ def parse_argument():
                         help='Number of hidden layers')
     parser.add_argument('--arc_width', type=int, default=100,
                         help='Number of neurons in each layer')
-    parser.add_argument('--optimizer', type=str, default='Adam', choices=['Adam', 'SGD'], 
-                        help='Type of optimizer')
+    parser.add_argument('--optimizer', type=str, default='Adam', choices=['SGD', 'RMSprop', 'Adam', 'Adadelta', 'Adagrad', 'ASGD'], help='Type of optimizer')
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Learning rate for training')
     parser.add_argument('--dropout', type=float, default=0.0,

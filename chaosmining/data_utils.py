@@ -1,9 +1,15 @@
 from typing import List, Tuple, Dict, Set, Union
 import csv
+import os
+import sys
 import copy
 import numpy as np
 import scipy
 from sympy import *
+
+import pandas as pd
+from PIL import Image 
+from torch.utils.data import Dataset, DataLoader
 
 def create_simulation_data(
     function: str,
@@ -101,3 +107,41 @@ if __name__ == '__main__':
           'intercepts', len(intercepts), intercepts[0].shape,
           'derivatives', len(derivatives), derivatives[0].shape, 
           'integrations', len(integrations), integrations[0].shape)
+    
+class ChaosVisionDataset(Dataset):
+    """Vision dataset for chaos mining."""
+
+    def __init__(self, root_dir, csv_file, transform=None, target_transform=None):
+        """
+        Arguments:
+            root_dir (string): Directory with all the images.
+            csv_file (string): Path to the csv file with annotations.
+            transform (callable, optional): Optional transform to be applied on a sample.
+            target_transform (callable, optional): Optional transform to be applied on a target.
+        """
+        self.root_dir = root_dir
+        self.df = pd.read_csv(csv_file)
+        self.transform = transform
+        self.target_transform = target_transform
+        
+    def get_target_names(self):
+        names = list(self.df.columns.values)
+        names.pop(0)
+        return names
+
+    def __len__(self):
+        return len(self.df.index)
+
+    def __getitem__(self, idx):
+
+        img_name = os.path.join(self.root_dir, self.df.iloc[idx, 0])
+        image = Image.open(img_name)  
+        landmarks = self.df.iloc[idx, 1:].values
+
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            landmarks = self.target_transform(landmarks)
+        sample = (image, landmarks)
+
+        return sample

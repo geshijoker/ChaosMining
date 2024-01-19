@@ -29,7 +29,7 @@ from chaosmining.utils import check_make_dir
 from chaosmining.vision import parse_argument, train_epoch, test
 """
 example command to run:
-python examples/train_eval_vision.py -d data/vision/RBFP/ -e runs/vision/RBFP/ -n resnet18 -s 9999 --model_name resnet18 --gpu 0 --num_classes 10 --num_epochs 20 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
+python examples/train_eval_vision.py -d /data/home/geshi/ChaosMining/data/vision/RBFP/ -e runs/vision/RBFP/ -n arc_vit_b_16 -s 9999 --model_name vit_b_16 --gpu 1 --num_classes 10 --num_epochs 20 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
 """
 
 # load and parse argument

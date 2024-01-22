@@ -6,10 +6,16 @@ import copy
 import numpy as np
 import scipy
 from sympy import *
+from scipy.io import wavfile
 
 import pandas as pd
 from PIL import Image 
 from torch.utils.data import Dataset, DataLoader
+import torchaudio
+from torchaudio.transforms import MelSpectrogram
+from torch import Tensor
+from torch import nn
+import torch.nn.functional as F
 
 def create_simulation_data(
     function: str,
@@ -145,3 +151,30 @@ class ChaosVisionDataset(Dataset):
         sample = (image, landmarks)
 
         return sample
+
+class ChaosAudioDataset(Dataset):
+    """Audio dataset for chaos mining."""
+    def __init__(self, root, split = None) -> None:
+        if split is not None and split not in ["train", "val"]:
+            raise ValueError("When `split` is not None, it must be one of ['training', 'validation', 'testing'].")
+        
+        root = os.fspath(root)
+        self.folder = os.path.join(root, split)
+
+        self.classes = os.listdir(self.folder)
+        self.audio_files = []
+        for i in range(len(self.classes)):
+            cla = self.classes[i]
+            files = os.listdir(os.path.join(self.folder, cla))
+            self.audio_files.extend(list(zip(files, [i]*len(files))))
+            
+    def __getitem__(self, idx):
+        cla = self.audio_files[idx][1]
+        audio_file = os.path.join(self.folder, self.classes[cla], self.audio_files[idx][0])
+        sample_rate, waveform = wavfile.read(audio_file)
+        waveform = waveform.transpose()
+        sample = (Tensor(waveform), cla, sample_rate)
+        return sample
+
+    def __len__(self):
+        return len(self.audio_files)

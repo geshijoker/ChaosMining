@@ -1,5 +1,6 @@
 import os
 import sys
+import csv
 import time
 import copy
 import random
@@ -80,61 +81,86 @@ bg_val_folder = os.path.join(args.input_path_bg, "rfcx-species-audio-detection",
 bg_train_files = [name for name in os.listdir(bg_train_folder) if name.endswith('.flac')]
 bg_val_files = [name for name in os.listdir(bg_val_folder) if name.endswith('.flac')]
 
-# # Random Background Fixed Position
-# for fg_id in range(len(fg_train_set)):
-#     # foreground
-#     fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
-#     fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-#     pad_size = sample_rate - fg_waveform.shape[1]
-#     fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-#     # background
-#     sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
-#     sample[:,0] = fg_waveform.squeeze()
-#     # save audio
-#     base_path = os.path.join(args.output_path, "RBFP", "train")
-#     wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+fields = ['Audio', 'Label', 'Position']
+filename = "meta_data.csv"
 
-# for fg_id in range(len(fg_val_set)):
-#     # foreground
-#     fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
-#     fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-#     pad_size = sample_rate - fg_waveform.shape[1]
-#     fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-#     # background
-#     sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
-#     sample[:,0] = fg_waveform.squeeze()
-#     # save audio
-#     base_path = os.path.join(args.output_path, "RBFP", "val")
-#     wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+# Random Background Fixed Position
+base_path = os.path.join(args.output_path, "RBFP", "train")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_train_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        # background
+        sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
+        pos = 0
+        sample[:,pos] = fg_waveform.squeeze()
+        # save audio
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(pos)]) 
 
-# # Random Background Random Position
-# for fg_id in range(len(fg_train_set)):
-#     # foreground
-#     fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
-#     fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-#     pad_size = sample_rate - fg_waveform.shape[1]
-#     fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-#     # background
-#     sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
-#     random_pos = random.randint(0, n_channels-1)
-#     sample[:,random_pos] = fg_waveform.squeeze()
-#     # save audio
-#     base_path = os.path.join(args.output_path, "RBRP", "train")
-#     wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+base_path = os.path.join(args.output_path, "RBFP", "val")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_val_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        # background
+        sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
+        pos = 0
+        sample[:,pos] = fg_waveform.squeeze()
+        # save audio
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(pos)]) 
 
-# for fg_id in range(len(fg_val_set)):
-#     # foreground
-#     fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
-#     fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-#     pad_size = sample_rate - fg_waveform.shape[1]
-#     fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-#     # background
-#     sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
-#     random_pos = random.randint(0, n_channels-1)
-#     sample[:,random_pos] = fg_waveform.squeeze()
-#     # save audio
-#     base_path = os.path.join(args.output_path, "RBRP", "val")
-#     wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+# Random Background Random Position
+base_path = os.path.join(args.output_path, "RBRP", "train")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_train_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        # background
+        sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
+        random_pos = random.randint(0, n_channels-1)
+        sample[:,random_pos] = fg_waveform.squeeze()
+        # save audio
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(pos)]) 
+
+base_path = os.path.join(args.output_path, "RBRP", "val")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_val_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        # background
+        sample = np.clip(np.random.normal(0, 1, (sample_rate, n_channels))*0.25, a_min=-1, a_max=1)
+        random_pos = random.randint(0, n_channels-1)
+        sample[:,random_pos] = fg_waveform.squeeze()
+        # save audio
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(pos)]) 
 
 # Structural Background Fixed Position
 for fg_id in range(len(fg_train_set)):
@@ -144,7 +170,8 @@ for fg_id in range(len(fg_train_set)):
     pad_size = sample_rate - fg_waveform.shape[1]
     fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
     sample = np.random.rand(sample_rate, n_channels)
-    sample[:,0] = fg_waveform.squeeze()
+    pos = 0
+    sample[:,pos] = fg_waveform.squeeze()
     # background
     for i in range(1, n_channels):
         bg_random_id = random.randint(0, len(bg_train_files)-1)
@@ -164,7 +191,8 @@ for fg_id in range(len(fg_val_set)):
     pad_size = sample_rate - fg_waveform.shape[1]
     fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
     sample = np.random.rand(sample_rate, n_channels)
-    sample[:,0] = fg_waveform.squeeze()
+    pos = 0
+    sample[:,pos] = fg_waveform.squeeze()
     # background
     for i in range(1, n_channels):
         bg_random_id = random.randint(0, len(bg_val_files)-1)

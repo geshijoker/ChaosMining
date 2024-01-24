@@ -160,6 +160,7 @@ class ChaosAudioDataset(Dataset):
         
         root = os.fspath(root)
         self.folder = os.path.join(root, split)
+        self.meta = None
 
         self.classes = os.listdir(self.folder)
         self.audio_files = []
@@ -167,13 +168,20 @@ class ChaosAudioDataset(Dataset):
             cla = self.classes[i]
             files = os.listdir(os.path.join(self.folder, cla))
             self.audio_files.extend(list(zip(files, [i]*len(files))))
+
+    def load_meta(csv_file):
+        self.meta = pd.read_csv(csv_file, index_col=0)
             
     def __getitem__(self, idx):
         cla = self.audio_files[idx][1]
         audio_file = os.path.join(self.folder, self.classes[cla], self.audio_files[idx][0])
         sample_rate, waveform = wavfile.read(audio_file)
         waveform = waveform.transpose()
-        sample = (Tensor(waveform), cla, sample_rate)
+        if self.meta:
+            pos = int(df.loc[self.audio_files[idx][0], 'Position'])
+            sample = (Tensor(waveform), cla, pos, sample_rate)
+        else:
+            sample = (Tensor(waveform), cla, sample_rate)
         return sample
 
     def __len__(self):

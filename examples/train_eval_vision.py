@@ -9,7 +9,6 @@ import numpy as np
 from tqdm import tqdm, trange
 from ptflops import get_model_complexity_info
 from torchinfo import summary
-from tqdm import tqdm
 
 import torch
 from torch import nn

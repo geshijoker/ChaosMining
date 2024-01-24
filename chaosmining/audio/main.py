@@ -22,16 +22,16 @@ def parse_argument():
                         help='Name of the experiment')
     parser.add_argument('--name', '-n', type=str, required=True, 
                         help='Name of run')
-    parser.add_argument('--split', type=str, required=True, choices=['train', 'val'],
-                        help='Train split or val split')
-    parser.add_argument('--model_name', '-m', type=str, required=True, choices = ['RNN', 'LSTM', 'TCN', 'Tran'], 
+    parser.add_argument('--model_name', '-m', type=str, required=True, choices = ['RNN', 'LSTM', 'TCN', 'TRAN'], 
                         help='Name of the model architecture')
+    parser.add_argument('--n_channels', type=int, default=10,
+                        help='Number of channels')
+    parser.add_argument('--length', type=int, default=16000,
+                        help='The length of the sequence')
     parser.add_argument('--seed', '-s', type=int, default=None, 
                         help='which seed for random number generator to use')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='which GPU to use, negative value denotes cpu will be used')
-    parser.add_argument('--num_classes', type=int, default=0,
-                        help='Number of classes')
     parser.add_argument('--num_epochs', type=int, default=20,
                         help='the number of epochs for training')
     parser.add_argument('--batch_size', type=int, default=128,
@@ -46,3 +46,92 @@ def parse_argument():
     args = parser.parse_args()
     
     return args
+
+def topk_corrects(output, target, topk=(1,)):
+    """Computes the number of corrects @k for the specified values of k.
+       topk should be a tuple of integers in ascending order.
+    """
+    maxk = max(topk)
+    batch_size = target.size(0)
+    
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].sum()
+        res.append(correct_k.double().item())
+    return res
+    
+def train_epoch(model, dataloader, num_classes, criterion, optimizer, scheduler, device, verbose=True):
+    epoch_loss = 0.0
+    epoch_acc = 0
+    count = 0
+
+    piter = tqdm(dataloader, desc='Epoch', unit='batch', position=1, leave=False, disable=not verbose)
+    for inputs, targets in piter:
+
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+
+        batch_size = inputs.size(0)
+        nxt_count = count+batch_size
+        # zero the parameter gradients
+        optimizer.zero_grad()
+
+        outputs = model(inputs)
+        _, preds = torch.max(outputs, 1)
+        loss = criterion(outputs, targets)
+
+        loss.backward()
+        optimizer.step()
+
+        # statistics
+        epoch_loss = loss.item() * batch_size/nxt_count + epoch_loss * count/nxt_count
+        epoch_acc = ((preds == targets).sum()/np.prod(preds.size())).item() * batch_size/nxt_count + epoch_acc * count/nxt_count
+        count = nxt_count
+        piter.set_postfix(accuracy=100. * epoch_acc, loss=epoch_loss)
+
+    scheduler.step()
+    train_stats = {
+        'train_loss': epoch_loss,
+        'train_acc': epoch_acc * 100,
+    }
+    
+    return model, train_stats
+
+def test(model, dataloader, num_classes, device, topk: Tuple[int, int]=(1,), verbose=True):
+    since = time.time()
+    model.eval()   # Set model to evaluate mode
+    
+    corrects = [0]*len(topk)
+    count = 0
+
+    # Iterate over data.
+    with torch.no_grad():
+        piter = tqdm(dataloader, desc='Test', unit='batch', disable=not verbose)
+        for inputs, targets in piter:
+
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+            
+            batch_size = inputs.size(0)
+            count += batch_size
+
+            outputs = model(inputs)
+            batch_corrects = topk_corrects(outputs, targets, topk=topk)
+
+            # statistics
+            corrects = [correct + batch_correct for correct, batch_correct in zip(corrects, batch_corrects)]
+            accs = [correct / count for correct in corrects]
+            piter.set_postfix(accuracy=100. * accs[0])
+
+    time_elapsed = time.time() - since
+    print(f'Testing complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, Test Acc: {100. * accs[0]}')
+    
+    test_stats = {}
+    for i in range(len(topk)):
+        test_stats[f'test_top{topk[i]}_acc'] = 100.*accs[i]
+
+    return test_stats

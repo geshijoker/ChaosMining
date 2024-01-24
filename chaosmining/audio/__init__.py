@@ -1,1 +1,1 @@
-from .main import parse_argument
+from .main import parse_argument, train_epoch, test

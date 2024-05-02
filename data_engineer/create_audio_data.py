@@ -141,7 +141,7 @@ with open(os.path.join(base_path, filename), 'w') as csvfile:
         # save audio
         name = speaker_id+"_"+str(utterance_number)+".wav"
         wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
-        csvwriter.writerow([name, str(label), str(pos)]) 
+        csvwriter.writerow([name, str(label), str(random_pos)]) 
 
 base_path = os.path.join(args.output_path, "RBRP", "val")
 with open(os.path.join(base_path, filename), 'w') as csvfile:
@@ -160,96 +160,116 @@ with open(os.path.join(base_path, filename), 'w') as csvfile:
         # save audio
         name = speaker_id+"_"+str(utterance_number)+".wav"
         wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
-        csvwriter.writerow([name, str(label), str(pos)]) 
+        csvwriter.writerow([name, str(label), str(random_pos)]) 
 
 # Structural Background Fixed Position
-for fg_id in range(len(fg_train_set)):
-    # foreground
-    fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
-    fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-    pad_size = sample_rate - fg_waveform.shape[1]
-    fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-    sample = np.random.rand(sample_rate, n_channels)
-    pos = 0
-    sample[:,pos] = fg_waveform.squeeze()
-    # background
-    for i in range(1, n_channels):
-        bg_random_id = random.randint(0, len(bg_train_files)-1)
-        bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_train_folder, bg_train_files[bg_random_id]), sr=sample_rate)
-        bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
-        max_volume = np.quantile(np.abs(bg_waveform), 0.99)
-        bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
-        sample[:,i] = bg_waveform.squeeze()
-    # save audio
-    base_path = os.path.join(args.output_path, "SBFP", "train")
-    wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+base_path = os.path.join(args.output_path, "SBFP", "train")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_train_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        sample = np.random.rand(sample_rate, n_channels)
+        pos = 0
+        sample[:,pos] = fg_waveform.squeeze()
+        # background
+        for i in range(1, n_channels):
+            bg_random_id = random.randint(0, len(bg_train_files)-1)
+            bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_train_folder, bg_train_files[bg_random_id]), sr=sample_rate)
+            bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
+            max_volume = np.quantile(np.abs(bg_waveform), 0.99)
+            bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
+            sample[:,i] = bg_waveform.squeeze()
+        # save audio
+        base_path = os.path.join(args.output_path, "SBFP", "train")
+        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(pos)]) 
 
-for fg_id in range(len(fg_val_set)):
-    # foreground
-    fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
-    fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-    pad_size = sample_rate - fg_waveform.shape[1]
-    fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-    sample = np.random.rand(sample_rate, n_channels)
-    pos = 0
-    sample[:,pos] = fg_waveform.squeeze()
-    # background
-    for i in range(1, n_channels):
-        bg_random_id = random.randint(0, len(bg_val_files)-1)
-        bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_val_folder, bg_val_files[bg_random_id]), sr=sample_rate)
-        bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
-        max_volume = np.quantile(np.abs(bg_waveform), 0.99)
-        bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
-        sample[:,i] = bg_waveform.squeeze()
-    # save audio
-    base_path = os.path.join(args.output_path, "SBFP", "val")
-    wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+base_path = os.path.join(args.output_path, "SBFP", "val")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_val_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        sample = np.random.rand(sample_rate, n_channels)
+        pos = 0
+        sample[:,pos] = fg_waveform.squeeze()
+        # background
+        for i in range(1, n_channels):
+            bg_random_id = random.randint(0, len(bg_val_files)-1)
+            bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_val_folder, bg_val_files[bg_random_id]), sr=sample_rate)
+            bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
+            max_volume = np.quantile(np.abs(bg_waveform), 0.99)
+            bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
+            sample[:,i] = bg_waveform.squeeze()
+        # save audio
+        base_path = os.path.join(args.output_path, "SBFP", "val")
+        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(pos)]) 
 
 # Structural Background Random Position
-for fg_id in range(len(fg_train_set)):
-    # foreground
-    fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
-    fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-    pad_size = sample_rate - fg_waveform.shape[1]
-    fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-    sample = np.random.rand(sample_rate, n_channels)
-    random_pos = random.randint(0, n_channels-1)
-    sample[:,random_pos] = fg_waveform.squeeze()
-    # background
-    for i in range(n_channels):
-        if i==random_pos:
-            continue
-        bg_random_id = random.randint(0, len(bg_train_files)-1)
-        bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_train_folder, bg_train_files[bg_random_id]), sr=sample_rate)
-        bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
-        max_volume = np.quantile(np.abs(bg_waveform), 0.99)
-        bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
-        sample[:,i] = bg_waveform.squeeze()
-    # save audio
-    base_path = os.path.join(args.output_path, "SBFP", "train")
-    wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+base_path = os.path.join(args.output_path, "SBRP", "train")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_train_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_train_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        sample = np.random.rand(sample_rate, n_channels)
+        random_pos = random.randint(0, n_channels-1)
+        sample[:,random_pos] = fg_waveform.squeeze()
+        # background
+        for i in range(n_channels):
+            if i==random_pos:
+                continue
+            bg_random_id = random.randint(0, len(bg_train_files)-1)
+            bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_train_folder, bg_train_files[bg_random_id]), sr=sample_rate)
+            bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
+            max_volume = np.quantile(np.abs(bg_waveform), 0.99)
+            bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
+            sample[:,i] = bg_waveform.squeeze()
+        # save audio
+        base_path = os.path.join(args.output_path, "SBFP", "train")
+        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(random_pos)]) 
 
-for fg_id in range(len(fg_val_set)):
-    # foreground
-    fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
-    fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
-    pad_size = sample_rate - fg_waveform.shape[1]
-    fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
-    sample = np.random.rand(sample_rate, n_channels)
-    random_pos = random.randint(0, n_channels-1)
-    sample[:,random_pos] = fg_waveform.squeeze()
-    # background
-    for i in range(n_channels):
-        if i==random_pos:
-            continue
-        bg_random_id = random.randint(0, len(bg_val_files)-1)
-        bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_val_folder, bg_val_files[bg_random_id]), sr=sample_rate)
-        bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
-        max_volume = np.quantile(np.abs(bg_waveform), 0.99)
-        bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
-        sample[:,i] = bg_waveform.squeeze()
-    # save audio
-    base_path = os.path.join(args.output_path, "SBFP", "val")
-    wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+base_path = os.path.join(args.output_path, "SBRP", "val")
+with open(os.path.join(base_path, filename), 'w') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(fields)
+    for fg_id in range(len(fg_val_set)):
+        # foreground
+        fg_waveform, fg_sample_rate, label, speaker_id, utterance_number = fg_val_set[fg_id]
+        fg_waveform = torchaudio.functional.resample(fg_waveform, orig_freq=fg_sample_rate, new_freq=sample_rate)
+        pad_size = sample_rate - fg_waveform.shape[1]
+        fg_waveform = np.pad(fg_waveform.numpy(), ((0,0),(0,pad_size)), mode='constant', constant_values=0)
+        sample = np.random.rand(sample_rate, n_channels)
+        random_pos = random.randint(0, n_channels-1)
+        sample[:,random_pos] = fg_waveform.squeeze()
+        # background
+        for i in range(n_channels):
+            if i==random_pos:
+                continue
+            bg_random_id = random.randint(0, len(bg_val_files)-1)
+            bg_waveform, bg_sample_rate = librosa.load(os.path.join(bg_val_folder, bg_val_files[bg_random_id]), sr=sample_rate)
+            bg_start = random.randint(0, len(bg_waveform)//sample_rate-1)
+            max_volume = np.quantile(np.abs(bg_waveform), 0.99)
+            bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
+            sample[:,i] = bg_waveform.squeeze()
+        # save audio
+        base_path = os.path.join(args.output_path, "SBFP", "val")
+        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        csvwriter.writerow([name, str(label), str(random_pos)]) 
 
 print("completed")

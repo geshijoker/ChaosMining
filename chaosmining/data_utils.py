@@ -152,25 +152,60 @@ class ChaosVisionDataset(Dataset):
 
         return sample
 
+# class ChaosAudioDataset(Dataset):
+#     """Audio dataset for chaos mining."""
+#     def __init__(self, root, split = None) -> None:
+#         if split is not None and split not in ["train", "val"]:
+#             raise ValueError("When `split` is not None, it must be one of ['training', 'validation', 'testing'].")
+        
+#         root = os.fspath(root)
+#         self.folder = os.path.join(root, split)
+#         self.meta = None
+
+#         self.classes = os.listdir(self.folder)
+#         self.audio_files = []
+#         for i in range(len(self.classes)):
+#             cla = self.classes[i]
+#             files = os.listdir(os.path.join(self.folder, cla))
+#             self.audio_files.extend(list(zip(files, [i]*len(files))))
+
+#     def load_meta(csv_file):
+#         self.meta = pd.read_csv(csv_file, index_col=0)
+            
+#     def __getitem__(self, idx):
+#         cla = self.audio_files[idx][1]
+#         audio_file = os.path.join(self.folder, self.classes[cla], self.audio_files[idx][0])
+#         sample_rate, waveform = wavfile.read(audio_file)
+#         waveform = waveform.transpose()
+#         if self.meta:
+#             pos = int(df.loc[self.audio_files[idx][0], 'Position'])
+#             sample = (Tensor(waveform), cla, pos, sample_rate)
+#         else:
+#             sample = (Tensor(waveform), cla, sample_rate)
+#         return sample
+
+#     def __len__(self):
+#         return len(self.audio_files)
+
 class ChaosAudioDataset(Dataset):
     """Audio dataset for chaos mining."""
-    def __init__(self, root, split = None) -> None:
+    def __init__(self, root, split, csv_file) -> None:
         if split is not None and split not in ["train", "val"]:
-            raise ValueError("When `split` is not None, it must be one of ['training', 'validation', 'testing'].")
+            raise ValueError("When `split` is not None, it must be one of ['train', 'val'].")
         
         root = os.fspath(root)
         self.folder = os.path.join(root, split)
-        self.meta = None
-
-        self.classes = os.listdir(self.folder)
+        self.df = pd.read_csv(os.path.join(self.folder, csv_file), index_col=0)
+        
+        self.classes = [sub_folder if os.path.isdir(sub_folder) for sub_folder in os.listdir(self.folder)]
         self.audio_files = []
         for i in range(len(self.classes)):
             cla = self.classes[i]
             files = os.listdir(os.path.join(self.folder, cla))
             self.audio_files.extend(list(zip(files, [i]*len(files))))
 
-    def load_meta(csv_file):
-        self.meta = pd.read_csv(csv_file, index_col=0)
+    def __len__(self):
+        return len(self.df.index)
             
     def __getitem__(self, idx):
         cla = self.audio_files[idx][1]
@@ -178,11 +213,8 @@ class ChaosAudioDataset(Dataset):
         sample_rate, waveform = wavfile.read(audio_file)
         waveform = waveform.transpose()
         if self.meta:
-            pos = int(df.loc[self.audio_files[idx][0], 'Position'])
+            pos = int(self.df.loc[self.audio_files[idx][0], 'Position'])
             sample = (Tensor(waveform), cla, pos, sample_rate)
         else:
             sample = (Tensor(waveform), cla, sample_rate)
         return sample
-
-    def __len__(self):
-        return len(self.audio_files)

@@ -33,7 +33,7 @@ from chaosmining.audio.functions import *
 
 """
 example command to run:
-python examples/train_eval_audio.py -d /data/home/geshi/ChaosMining/data/audio/RBFP/ -e runs/audio/RBFP/ -n RNN -s 9999 --model_name RNN --n_channels 10 --length 16000 --gpu 0 --num_epochs 20 --batch_size 128 --learning_rate 0.001 --deterministic --debug
+python examples/train_eval_audio.py -d /data/home/geshi/ChaosMining/data/audio/RBFP/ -e /data/home/geshi/ChaosMining/runs/audio/RBFP/ -n arc_TRAN -s 9999 --model_name TRAN --n_channels 10 --length 16000 --gpu 0 --num_epochs 30 --batch_size 128 --learning_rate 0.0001 --deterministic --debug
 """
 
 # load and parse argument
@@ -63,10 +63,10 @@ experiment = args.experiment
 run_name = args.name + f'_seed_{seed}'
 log_path = os.path.join(experiment, run_name)
 
-# if os.path.isdir(log_path):
-#     sys.exit('The name of the run has alrealy exist')
-# else:
-#     check_make_dir(log_path)
+if os.path.isdir(log_path):
+    sys.exit('The name of the run has alrealy exist')
+else:
+    check_make_dir(log_path)
 
 # set up benchmark running
 if args.deterministic:
@@ -90,8 +90,8 @@ length = args.length
 
 # define datasets
 
-train_set = ChaosAudioDataset(args.data, "train")
-val_set = ChaosAudioDataset(args.data, "val")
+train_set = ChaosAudioDataset(args.data, "train", "meta_data.csv")
+val_set = ChaosAudioDataset(args.data, "val", "meta_data.csv")
 
 num_classes = len(train_set.classes)
 
@@ -130,7 +130,7 @@ out = model(sample)
 print('sample output', out.shape)
 summary(model, input_size=sample_shape)
 
-flops, params = profile(model, inputs=(sample.to(device),))
+flops, params = profile(model.cpu(), inputs=(sample.cpu(),))
 flops, params = clever_format([flops, params], "%.3f")
 print(f"FLOPs: {flops}, Parameters: {params}")
 
@@ -141,31 +141,31 @@ model.train()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=lr)
 # scheduler = lr_scheduler.StepLR(optimizer, 20)
-scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 20)
+scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 30)
 
-# print('Starting training loop; initial compile can take a while...')
-# since = time.time()
-# start_epoch = 0
-# writer = SummaryWriter(log_path)
+print('Starting training loop; initial compile can take a while...')
+since = time.time()
+start_epoch = 0
+writer = SummaryWriter(log_path)
 
-# def save_checkpoint():
-#     utctime = datetime.datetime.now(datetime.timezone.utc).strftime("%m-%d-%Y-%H:%M:%S")
-#     model_path = os.path.join(log_path, utctime+'.pt')
-#     torch.save({'model_state_dict': model.state_dict()}, model_path)
+def save_checkpoint():
+    utctime = datetime.datetime.now(datetime.timezone.utc).strftime("%m-%d-%Y-%H:%M:%S")
+    model_path = os.path.join(log_path, utctime+'.pt')
+    torch.save({'model_state_dict': model.state_dict()}, model_path)
 
-# pbar = trange(num_epochs, desc='Train', unit='epoch', initial=start_epoch, position=0, disable=not args.debug)
-# # Iterate over data.
-# for epoch in pbar:
-#     model, train_stats = train_epoch(model, train_loader, num_classes, criterion, optimizer, scheduler, device, args.debug)
+pbar = trange(num_epochs, desc='Train', unit='epoch', initial=start_epoch, position=0, disable=not args.debug)
+# Iterate over data.
+for epoch in pbar:
+    model, train_stats = train_epoch(model, train_loader, num_classes, criterion, optimizer, scheduler, device, args.debug)
 
-#     writer.add_scalar('time eplased', time.time() - since, epoch)
-#     for stat in train_stats:
-#         writer.add_scalar(stat, train_stats[stat], epoch)
+    writer.add_scalar('time eplased', time.time() - since, epoch)
+    for stat in train_stats:
+        writer.add_scalar(stat, train_stats[stat], epoch)
 
-#     pbar.set_postfix(loss=train_stats['train_loss'], acc=train_stats['train_acc'])
+    pbar.set_postfix(loss=train_stats['train_loss'], acc=train_stats['train_acc'])
 
-# time_elapsed = time.time() - since
-# print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {train_stats["train_loss"]}, acc: {train_stats["train_acc"]}')
+time_elapsed = time.time() - since
+print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {train_stats["train_loss"]}, acc: {train_stats["train_acc"]}')
 
 model.eval()
 with torch.no_grad():
@@ -174,8 +174,8 @@ with torch.no_grad():
     hparam_dict = {'model_architecture':args.model_name, 'learning_rate':lr, 'batch_size':batch_size}
     metric_dict = val_stats
     print(metric_dict)
-#     writer.add_hparams(hparam_dict, metric_dict)
-#     save_checkpoint()
+    writer.add_hparams(hparam_dict, metric_dict)
+    save_checkpoint()
 
-# writer.flush()
-# writer.close()
+writer.flush()
+writer.close()

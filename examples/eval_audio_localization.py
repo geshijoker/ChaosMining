@@ -33,7 +33,7 @@ from chaosmining.audio.functions import *
 from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
 """
 example command to run:
-python examples/eval_audio_localization.py -d /data/home/geshi/ChaosMining/data/audio/RBFP/ -e runs/audio/RBFP/ -n RNN -s 9999 --model_name RNN --n_channels 10 --length 16000 --gpu 0 --batch_size 32 --deterministic --debug
+python examples/eval_audio_localization.py -d /data/home/geshi/ChaosMining/data/audio/RBFP/ -e /data/home/geshi/ChaosMining/runs/audio/RBFP/ -n arc_RNN -s 9999 --model_name RNN --n_channels 10 --length 16000 --gpu 0 --batch_size 32 --deterministic --debug
 """
 
 # load and parse argument
@@ -85,9 +85,8 @@ n_channels = args.n_channels
 length = args.length
 
 # define datasets
-
-train_set = ChaosAudioDataset(args.data, "train")
-val_set = ChaosAudioDataset(args.data, "val")
+train_set = ChaosAudioDataset(args.data, "train", "meta_data.csv")
+val_set = ChaosAudioDataset(args.data, "val", "meta_data.csv")
 
 num_classes = len(train_set.classes)
 
@@ -96,14 +95,12 @@ train_loader = torch.utils.data.DataLoader(
     train_set,
     batch_size=batch_size,
     shuffle=True,
-    collate_fn=collate_fn,
 )
 val_loader = torch.utils.data.DataLoader(
     val_set,
     batch_size=batch_size,
     shuffle=False,
     drop_last=False,
-    collate_fn=collate_fn,
 )
 
 # create model
@@ -130,7 +127,7 @@ model.to(device)
 # load pretrained model
 param_files = [f for f in os.listdir(log_path) if f.endswith('.pt')]
 print('model', os.path.join(log_path, param_files[0]))
-model.load_state_dict(torch.load(os.path.join(log_path, param_files[0]), map_location=device)['model_state_dict'])
+model.load_state_dict(torch.load(os.path.join(log_path, param_files[0]), map_location=device)['model_state_dict'], strict=False)
 model.eval()
 
 ig = IntegratedGradients(model)
@@ -145,12 +142,13 @@ with torch.no_grad():
     val_stats = test(model, val_loader, num_classes, device, (1, 5), args.debug) 
     print(val_stats)
     count = 0
-    
-    piter = tqdm(val_loader, desc='Test', unit='batch', disable=not args.debug)
-    for inputs, targets in piter:
 
+    model.train()
+    piter = tqdm(val_loader, desc='Test', unit='batch', disable=not args.debug)
+    for inputs, targets, pos, _ in piter:
         inputs = inputs.to(device)
         targets = targets.to(device)
+        pos = pos.tolist()
 
         count += inputs.size(0)
 
@@ -158,28 +156,36 @@ with torch.no_grad():
         _, preds = outputs.topk(1)
 
         sa_attr = sa.attribute(inputs, preds.squeeze())
-        avg_sa_attr = sa_attr.abs().mean(-1).mean(0).detach().cpu().numpy()
-        sa_score = avg_sa_attr/np.linalg.norm(avg_sa_attr, 1)
-        sa_scores.extend(sa_score)
+        sa_ma = sa_attr.abs().mean(-1).detach().cpu().numpy()
+        sa_selected = sa_ma[np.arange(inputs.size(0)), pos]
+        sa_ra = sa_selected/np.linalg.norm(sa_ma, 1, axis=-1)
+        sa_score = np.mean(sa_ra)
+        sa_scores.append(sa_score)
 
-        ig_attr = ig.attribute(inputs, torch.zeros_like(inputs).to(device), preds.squeeze())
-        avg_ig_attr = ig_attr.abs().mean(-1).mean(0).detach().cpu().numpy()
-        ig_score = avg_ig_attr/np.linalg.norm(avg_ig_attr, 1)
-        ig_scores.extend(ig_score)
+        ig_attr = ig.attribute(inputs, torch.zeros_like(inputs).to(device), preds.squeeze(), n_steps=10)
+        ig_ma = ig_attr.abs().mean(-1).detach().cpu().numpy()
+        ig_selected = ig_ma[np.arange(inputs.size(0)), pos]
+        ig_ra = ig_selected/np.linalg.norm(ig_ma, 1, axis=-1)
+        ig_score = np.mean(ig_ra)
+        ig_scores.append(ig_score)
 
         dl_attr = dl.attribute(inputs, torch.zeros_like(inputs).to(device), preds.squeeze())
-        avg_dl_attr = dl_attr.abs().mean(-1).mean(0).detach().cpu().numpy()
-        dl_score = avg_dl_attr/np.linalg.norm(avg_dl_attr, 1)
-        dl_scores.extend(dl_score)
+        dl_ma = dl_attr.abs().mean(-1).detach().cpu().numpy()
+        dl_selected = dl_ma[np.arange(inputs.size(0)), pos]
+        dl_ra = ig_selected/np.linalg.norm(dl_ma, 1, axis=-1)
+        dl_score = np.mean(dl_ra)
+        dl_scores.append(dl_score)
 
         feature_mask = np.arange(n_channels)
         feature_mask = feature_mask[np.newaxis,:,np.newaxis]
-        feature_mask = feature_mask.repeat(sample_rate, axis=-1).repeat(inputs.size(0), axis=0)
-        feature_mask=torch.from_numpy(feature_mask)
+        feature_mask = feature_mask.repeat(length, axis=-1).repeat(inputs.size(0), axis=0)
+        feature_mask = torch.from_numpy(feature_mask)
         fa_attr = fa.attribute(inputs, torch.zeros_like(inputs).to(device), target=preds.squeeze(), feature_mask=feature_mask.to(device))
-        avg_fa_attr = fa_attr.abs().mean(-1).mean(0).detach().cpu().numpy()
-        fa_score = avg_fa_attr/np.linalg.norm(avg_fa_attr, 1)
-        fa_scores.extend(fa_score)
+        fa_ma = fa_attr.abs().mean(-1).detach().cpu().numpy()
+        fa_selected = fa_ma[np.arange(inputs.size(0)), pos]
+        fa_ra = fa_selected/np.linalg.norm(fa_ma, 1, axis=-1)
+        fa_score = np.mean(fa_ra)
+        fa_scores.append(fa_score)
         
     avg_sa_score = np.mean(sa_scores)
     avg_ig_score = np.mean(ig_scores)

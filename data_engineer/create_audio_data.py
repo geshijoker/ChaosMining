@@ -185,8 +185,8 @@ with open(os.path.join(base_path, filename), 'w') as csvfile:
             bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
             sample[:,i] = bg_waveform.squeeze()
         # save audio
-        base_path = os.path.join(args.output_path, "SBFP", "train")
-        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
         csvwriter.writerow([name, str(label), str(pos)]) 
 
 base_path = os.path.join(args.output_path, "SBFP", "val")
@@ -211,8 +211,8 @@ with open(os.path.join(base_path, filename), 'w') as csvfile:
             bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
             sample[:,i] = bg_waveform.squeeze()
         # save audio
-        base_path = os.path.join(args.output_path, "SBFP", "val")
-        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
         csvwriter.writerow([name, str(label), str(pos)]) 
 
 # Structural Background Random Position
@@ -240,8 +240,8 @@ with open(os.path.join(base_path, filename), 'w') as csvfile:
             bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
             sample[:,i] = bg_waveform.squeeze()
         # save audio
-        base_path = os.path.join(args.output_path, "SBFP", "train")
-        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
         csvwriter.writerow([name, str(label), str(random_pos)]) 
 
 base_path = os.path.join(args.output_path, "SBRP", "val")
@@ -268,8 +268,8 @@ with open(os.path.join(base_path, filename), 'w') as csvfile:
             bg_waveform = np.clip(bg_waveform[bg_start*sample_rate:(bg_start+1)*sample_rate]/max_volume, a_min=-1, a_max=1)
             sample[:,i] = bg_waveform.squeeze()
         # save audio
-        base_path = os.path.join(args.output_path, "SBFP", "val")
-        wavfile.write(os.path.join(base_path, label, speaker_id+"_"+str(utterance_number)+".wav"), sample_rate, sample)
+        name = speaker_id+"_"+str(utterance_number)+".wav"
+        wavfile.write(os.path.join(base_path, label, name), sample_rate, sample)
         csvwriter.writerow([name, str(label), str(random_pos)]) 
 
 print("completed")

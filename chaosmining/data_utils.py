@@ -195,26 +195,23 @@ class ChaosAudioDataset(Dataset):
         
         root = os.fspath(root)
         self.folder = os.path.join(root, split)
-        self.df = pd.read_csv(os.path.join(self.folder, csv_file), index_col=0)
+        self.df = pd.read_csv(os.path.join(self.folder, csv_file))
         
-        self.classes = [sub_folder if os.path.isdir(sub_folder) for sub_folder in os.listdir(self.folder)]
-        self.audio_files = []
-        for i in range(len(self.classes)):
-            cla = self.classes[i]
-            files = os.listdir(os.path.join(self.folder, cla))
-            self.audio_files.extend(list(zip(files, [i]*len(files))))
+        self.sub_folders = os.listdir(self.folder)
+        self.classes = []
+        for sub_folder in self.sub_folders:
+            if os.path.isdir(os.path.join(self.folder, sub_folder)):
+                self.classes.append(sub_folder)
 
     def __len__(self):
         return len(self.df.index)
             
     def __getitem__(self, idx):
-        cla = self.audio_files[idx][1]
-        audio_file = os.path.join(self.folder, self.classes[cla], self.audio_files[idx][0])
+        class_name = self.df['Label'].iloc[idx]
+        audio_file = os.path.join(self.folder, class_name, self.df['Audio'].iloc[idx])
+        cla = int(self.classes.index(class_name))
         sample_rate, waveform = wavfile.read(audio_file)
         waveform = waveform.transpose()
-        if self.meta:
-            pos = int(self.df.loc[self.audio_files[idx][0], 'Position'])
-            sample = (Tensor(waveform), cla, pos, sample_rate)
-        else:
-            sample = (Tensor(waveform), cla, sample_rate)
+        pos = int(self.df['Position'].iloc[idx])
+        sample = (Tensor(waveform), cla, pos, sample_rate)
         return sample

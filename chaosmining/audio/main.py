@@ -70,7 +70,7 @@ def train_epoch(model, dataloader, num_classes, criterion, optimizer, scheduler,
     count = 0
 
     piter = tqdm(dataloader, desc='Epoch', unit='batch', position=1, leave=False, disable=not verbose)
-    for inputs, targets in piter:
+    for inputs, targets, *_ in piter:
 
         inputs = inputs.to(device)
         targets = targets.to(device)
@@ -111,7 +111,7 @@ def test(model, dataloader, num_classes, device, topk: Tuple[int, int]=(1,), ver
     # Iterate over data.
     with torch.no_grad():
         piter = tqdm(dataloader, desc='Test', unit='batch', disable=not verbose)
-        for inputs, targets in piter:
+        for inputs, targets, *_ in piter:
 
             inputs = inputs.to(device)
             targets = targets.to(device)

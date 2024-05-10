@@ -157,6 +157,7 @@ data/vision
 data/audio
 runs/
 exps/
+src/
 example_radar_plot.png
 
 # PyCharm

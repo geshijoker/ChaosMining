@@ -35,7 +35,7 @@ from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
 from scipy.ndimage import gaussian_filter 
 """
 example command to run:
-python examples/eval_vision_localization.py -d /data/home/geshi/ChaosMining/data/vision/RBRP/ -e runs/vision/RBRP/ -n arc_googlenet -s 9999 --model_name googlenet --gpu 0 --num_classes 10 --batch_size 2 --deterministic --debug
+python examples/eval_vision_localization.py -d /data/home/geshi/ChaosMining/data/vision/RBRP/ -e /data/home/geshi/ChaosMining/runs/vision/RBRP/ -n arc_googlenet -s 9999 --model_name googlenet --gpu 0 --num_classes 10 --batch_size 2 --deterministic --debug
 """
 
 # load and parse argument

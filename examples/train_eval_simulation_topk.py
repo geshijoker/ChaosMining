@@ -34,7 +34,7 @@ from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-python examples/train_eval_simulation.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/simulation/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
+python examples/train_eval_simulation_topk.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/topk_simulation/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
 """
 
 # load and parse argument
@@ -175,33 +175,41 @@ for index, formula in enumerate(formulas):
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {loss:3f}')
     
     y_pred = model(Tensor(X_test).to(device)).detach().cpu().numpy()
+    mean_abs_y_diff, std_abs_y_diff = functions.mean_std_absolute_error(y_pred, y_true_test)
+    Pred_score = functions.uniformity_score(y_pred, y_true_test)
 
-    ig = IntegratedGradients(model)
     sa = Saliency(model)
+    ig = IntegratedGradients(model)
+    dl = DeepLift(model)
     fa = FeatureAblation(model)
 
-    ig_attr_test = ig.attribute(Tensor(X_test).to(device), n_steps=20)
     sa_attr_test = sa.attribute(Tensor(X_test).to(device))
+    ig_attr_test = ig.attribute(Tensor(X_test).to(device), n_steps=20)
+    dl_attr_test = dl.attribute(Tensor(X_test).to(device))
     fa_attr_test = fa.attribute(Tensor(X_test).to(device))
-    
-    FA_score = functions.uniformity_score(functions.normalize_attr(fa_attr_test.detach().cpu().numpy())[:,:num_features], \
-                                          functions.normalize_attr(intercepts_test)[:,:num_features])
-    Saliency_score = functions.uniformity_score(functions.normalize_attr(sa_attr_test.detach().cpu().numpy())[:,:num_features], \
-                                               functions.normalize_attr(derivatives_test)[:,:num_features])
-    IG_score = functions.uniformity_score(functions.normalize_attr(ig_attr_test.detach().cpu().numpy())[:,:num_features], \
-                                          functions.normalize_attr(integrations_test)[:,:num_features])
-    
+
+    sa_topk_inds = functions.abs_argmax_topk(sa_attr_test.detach().cpu().numpy(), num_features)
+    ig_topk_inds = functions.abs_argmax_topk(ig_attr_test.detach().cpu().numpy(), num_features)
+    dl_topk_inds = functions.abs_argmax_topk(dl_attr_test.detach().cpu().numpy(), num_features)
+    fa_topk_inds = functions.abs_argmax_topk(fa_attr_test.detach().cpu().numpy(), num_features)
+
+    Saliency_score = functions.top_features_score(sa_topk_inds, num_features)
+    IG_score = functions.top_features_score(ig_topk_inds, num_features)
+    DeepLift_score = functions.top_features_score(dl_topk_inds, num_features)
+    FA_score = functions.top_features_score(fa_topk_inds, num_features)
+
     Pred_scores.append(Pred_score) 
-    FA_scores.append(FA_score)
     Saliency_scores.append(Saliency_score)
     IG_scores.append(IG_score)
+    DeepLift_scores.append(DeepLift_score)
+    FA_scores.append(FA_score)
 
     hparam_dict = {'formula_id':index, 'num_features':num_features, 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
-    metric_dict = {'Pred':Pred_score, 'FA':FA_score, 'Saliency':Saliency_score, 'IG':IG_score}
+    metric_dict = {'Pred':Pred_score, 'Saliency':Saliency_score, 'IG':IG_score, 'DeepLift':DeepLift_score, 'FA':FA_score}
     writer.add_hparams(hparam_dict, metric_dict)
 
 hparam_dict = {'formula_id':'mean', 'num_features':'N/A', 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
-metric_dict = {'FA':np.mean(FA_scores), 'Saliency':np.mean(Saliency_scores), 'IG':np.mean(IG_scores)}
+metric_dict = {'Pred':np.mean(Pred_scores), 'Saliency':np.mean(Saliency_scores), 'IG':np.mean(IG_scores), 'DeepLift':np.mean(DeepLift_scores), 'FA':np.mean(FA_scores)}
 writer.add_hparams(hparam_dict, metric_dict)
 
 writer.flush()

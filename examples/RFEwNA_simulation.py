@@ -37,7 +37,7 @@ from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-python examples/biobjective_optimization_simulation.py -d data/symbolic_simulation/formula.csv -e runs/simulation/biobjective -n bo_ig -s 9999 -g 0 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --dropout 0.0 --xai ig --deterministic --debug
+python examples/RFEwNA_simulation.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/RFEwNA -n rfe_ig -s 9999 -g 0 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --dropout 0.0 --xai ig --deterministic --debug
 """
 
 # load and parse argument
@@ -199,10 +199,15 @@ for index, formula in enumerate(formulas):
         num_remove = int(num_cur_features*(1-reduce_rate))
         if num_remove<1:
             break
+        
         xai_attr_test = xai.attribute(Tensor(X_test[...,bool_arr]).to(device))
         abs_xai_attr_test = np.abs(xai_attr_test.detach().cpu().numpy()).mean(0)
+        
         inds = np.argpartition(abs_xai_attr_test, num_remove)[:num_remove]
-        select_arr[inds] = 0
+        inds_to_remove = remaining_inds[inds]
+        select_arr[inds_to_remove] = 0
+        
+        remaining_inds = np.nonzero(select_arr)[0]
         num_cur_features -= num_remove
 
     print('formula', index, 'score', best_score, 'selected', np.where(select_arr==1)[0])

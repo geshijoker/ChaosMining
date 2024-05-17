@@ -28,7 +28,7 @@ from chaosmining.utils import check_make_dir
 from chaosmining.vision import parse_argument, train_epoch, test
 """
 example command to run:
-python examples/train_eval_vision.py -d /data/home/geshi/ChaosMining/data/vision/RBFP/ -e /data/home/geshi/ChaosMining/runs/vision/RBFP/ -n arc_vit_b_16 -s 9999 --model_name vit_b_16 --gpu 1 --num_classes 10 --num_epochs 20 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
+python examples/train_eval_vision.py -d /data/home/geshi/ChaosMining/data/vision/RBFP/ -e /data/home/geshi/ChaosMining/runs/vision/RBRP/ -n arc_vit_b_16 -s 8357 --model_name vit_b_16 --gpu 1 --num_classes 10 --num_epochs 20 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
 """
 
 # load and parse argument
@@ -130,9 +130,9 @@ model.eval()
 out = model(sample)
 print('sample output', out.shape)
 summary(model, input_size=sample_shape)
-macs, params = get_model_complexity_info(model, (3, 224, 224), as_strings=True, backend='pytorch', print_per_layer_stat=True, verbose=True)
-print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
-print('{:<30}  {:<8}'.format('Number of parameters: ', params))
+# macs, params = get_model_complexity_info(model, (3, 224, 224), as_strings=True, backend='pytorch', print_per_layer_stat=True, verbose=True)
+# print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
+# print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 model.to(device)
 model.train()
 

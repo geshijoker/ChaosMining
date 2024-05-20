@@ -34,7 +34,7 @@ from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-python examples/train_eval_simulation.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/simulation/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
+python examples/train_eval_simulation.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/simulation/ -n 14 -s 1111 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
 """
 
 # load and parse argument
@@ -124,7 +124,6 @@ def train(model, dataloader, num_epochs, optimizer):
 
 writer = SummaryWriter(log_path)
 
-Pred_scores=[]
 DeepLift_scores=[]
 FA_scores=[]
 Saliency_scores=[] 
@@ -173,8 +172,6 @@ for index, formula in enumerate(formulas):
     loss = train(model, train_loader, num_epochs, optimizer)
     time_elapsed = time.time() - since
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {loss:3f}')
-    
-    y_pred = model(Tensor(X_test).to(device)).detach().cpu().numpy()
 
     ig = IntegratedGradients(model)
     sa = Saliency(model)
@@ -191,13 +188,12 @@ for index, formula in enumerate(formulas):
     IG_score = functions.uniformity_score(functions.normalize_attr(ig_attr_test.detach().cpu().numpy())[:,:num_features], \
                                           functions.normalize_attr(integrations_test)[:,:num_features])
     
-    Pred_scores.append(Pred_score) 
     FA_scores.append(FA_score)
     Saliency_scores.append(Saliency_score)
     IG_scores.append(IG_score)
 
     hparam_dict = {'formula_id':index, 'num_features':num_features, 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
-    metric_dict = {'Pred':Pred_score, 'FA':FA_score, 'Saliency':Saliency_score, 'IG':IG_score}
+    metric_dict = {'FA':FA_score, 'Saliency':Saliency_score, 'IG':IG_score}
     writer.add_hparams(hparam_dict, metric_dict)
 
 hparam_dict = {'formula_id':'mean', 'num_features':'N/A', 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}

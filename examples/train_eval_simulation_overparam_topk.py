@@ -24,7 +24,7 @@ sys.path.append("/home/geshi/ChaosMining")
 
 from chaosmining.data_utils import create_simulation_data, read_formulas
 from chaosmining.simulation import parse_argument, functions
-from chaosmining.simulation.models import MLPRegressor
+from chaosmining.simulation.models import MLPResRegressor
 from chaosmining.utils import check_make_dir
 
 from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
@@ -34,7 +34,7 @@ from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-python examples/train_eval_simulation_topk.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/topk_simulation/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
+python examples/train_eval_simulation_overparam_topk.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/simulation_overparam_topk/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
 """
 
 # load and parse argument
@@ -159,7 +159,7 @@ for index, formula in enumerate(formulas):
     test_set = TensorDataset(Tensor(X_test), Tensor(y_test))
     test_loader = DataLoader(test_set, batch_size=y_test.shape[0], shuffle=False)
 
-    model = MLPRegressor(num_features+num_noises, hidden_layer_sizes, p=dropout)    
+    model = MLPResRegressor(num_features+num_noises, hidden_layer_sizes, p=dropout)    
     model.to(device)
     model.train()
 

@@ -16,7 +16,7 @@ from torchvision import datasets, models, transforms
 sys.path.append("/home/geshi/ChaosMining")
 from chaosmining.utils import check_make_dir
 
-# python3 create_vision_data.py --input_path ../../data --output_path ../data/vision
+# python3 create_vision_data.py --input_path INPUT_PATH --output_path OUTPUT_PATH
 
 parser = argparse.ArgumentParser(description='Parse arguments to create vision data with irrelevant features')
 parser.add_argument('--input_path', type=str, required=True,

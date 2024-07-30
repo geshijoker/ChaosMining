@@ -23,8 +23,6 @@ import torchvision
 from torchvision import models, transforms
 from torch.utils.tensorboard import SummaryWriter
 
-sys.path.append("/home/geshi/ChaosMining")
-
 from chaosmining.data_utils import ChaosVisionDataset
 from chaosmining.utils import check_make_dir
 from chaosmining.vision import parse_argument, train_epoch, test
@@ -35,7 +33,7 @@ from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
 from scipy.ndimage import gaussian_filter 
 """
 example command to run:
-python examples/eval_vision_localization.py -d /data/home/geshi/ChaosMining/data/vision/RBRP/ -e /data/home/geshi/ChaosMining/runs/vision/RBRP/ -n arc_googlenet -s 9999 --model_name googlenet --gpu 0 --num_classes 10 --batch_size 2 --deterministic --debug
+python examples/eval_vision_localization.py -d ./data/vision/RBRP/ -e ./runs/vision/RBRP/ -n arc_vit_b_16 -s SEED --model_name vit_b_16 --gpu 1 --num_classes 10 --batch_size 2 --deterministic --debug
 """
 
 # load and parse argument
@@ -105,7 +103,7 @@ target_transform = transforms.Compose([
 # load data
 root_dir = args.data
 val_data = os.path.join(root_dir, 'val')
-val_csv_file = os.path.join(val_data, 'meta_data.csv')
+val_csv_file = os.path.join(val_data, 'metadata.csv')
 valset = ChaosVisionDataset(val_data, val_csv_file, transform=data_transform, target_transform=target_transform)
 val_loader = DataLoader(valset, batch_size=batch_size, shuffle=False)
 
@@ -203,7 +201,6 @@ with torch.no_grad():
     metric_dict['ig_iou'] = avg_ig_iou
     metric_dict['dl_iou'] = avg_dl_iou
     metric_dict['fa_iou'] = avg_fa_iou
-    print(metric_dict)
     
     writer.add_hparams(hparam_dict, metric_dict)
 

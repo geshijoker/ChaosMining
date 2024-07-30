@@ -19,7 +19,7 @@ from scipy.io import wavfile
 sys.path.append("/home/geshi/ChaosMining")
 from chaosmining.utils import check_make_dir
 
-# python3 create_audio_data.py --input_path_fg /data/home/geshi/data/ --input_path_bg /data/home/geshi/data/ --output_path /data/home/geshi/ChaosMining/data/audio 
+# python3 create_audio_data.py --input_path_fg FOREGROUND_INPUT_PATH --input_path_bg BACKGROUND_INPUT_PATH --output_path OUTPUT_PATH 
 
 parser = argparse.ArgumentParser(description='Parse arguments to create audio data with irrelevant features')
 parser.add_argument('--input_path_fg', type=str, required=True,

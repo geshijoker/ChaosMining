@@ -20,8 +20,6 @@ from torch.optim import lr_scheduler
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
-sys.path.append("/home/geshi/ChaosMining")
-
 from chaosmining.data_utils import create_simulation_data, read_formulas
 from chaosmining.simulation import parse_argument, functions
 from chaosmining.simulation.models import MLPRegressor
@@ -34,7 +32,11 @@ from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
+<<<<<<< HEAD
 python examples/train_eval_simulation.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/simulation/ -n 14 -s 1111 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
+=======
+python examples/train_eval_simulation.py -d ./data/symbolic_simulation/formula.csv -e ./runs/simulation/ -n 14 -s SEED --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
+>>>>>>> ziwen
 """
 
 # load and parse argument

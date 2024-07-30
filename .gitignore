@@ -153,12 +153,12 @@ dmypy.json
 cython_debug/
 
 # Custom
-data/vision
-data/audio
 runs/
 exps/
 src/
-example_radar_plot.png
+notebooks/arxived_notebooks/
+**/*.png
+
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

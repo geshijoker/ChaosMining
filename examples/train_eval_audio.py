@@ -24,7 +24,6 @@ from tqdm import tqdm, trange
 from thop import profile, clever_format
 from torchinfo import summary
 
-sys.path.append("/home/geshi/ChaosMining")
 from chaosmining.data_utils import ChaosAudioDataset
 from chaosmining.utils import check_make_dir
 from chaosmining.audio.models import *
@@ -33,7 +32,7 @@ from chaosmining.audio.functions import *
 
 """
 example command to run:
-python examples/train_eval_audio.py -d /data/home/geshi/ChaosMining/data/audio/RBFP/ -e /data/home/geshi/ChaosMining/runs/audio/RBFP/ -n arc_TRAN -s 9999 --model_name TRAN --n_channels 10 --length 16000 --gpu 0 --num_epochs 30 --batch_size 128 --learning_rate 0.0001 --deterministic --debug
+python examples/train_eval_audio.py -d ./data/audio/RBFP/ -e ./runs/audio/RBFP/ -n arc_TRAN -s SEED --model_name TRAN --n_channels 10 --length 16000 --gpu 0 --num_epochs 30 --batch_size 128 --learning_rate 0.0001 --deterministic --debug
 """
 
 # load and parse argument
@@ -90,8 +89,8 @@ length = args.length
 
 # define datasets
 
-train_set = ChaosAudioDataset(args.data, "train", "meta_data.csv")
-val_set = ChaosAudioDataset(args.data, "val", "meta_data.csv")
+train_set = ChaosAudioDataset(args.data, "train", "metadata.csv")
+val_set = ChaosAudioDataset(args.data, "val", "metadata.csv")
 
 num_classes = len(train_set.classes)
 
@@ -173,7 +172,6 @@ with torch.no_grad():
 
     hparam_dict = {'model_architecture':args.model_name, 'learning_rate':lr, 'batch_size':batch_size}
     metric_dict = val_stats
-    print(metric_dict)
     writer.add_hparams(hparam_dict, metric_dict)
     save_checkpoint()
 

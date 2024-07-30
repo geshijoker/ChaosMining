@@ -23,7 +23,6 @@ from torch.optim import lr_scheduler
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
-sys.path.append("/home/geshi/ChaosMining")
 from chaosmining.data_utils import ChaosAudioDataset
 from chaosmining.utils import check_make_dir
 from chaosmining.audio.models import *
@@ -33,7 +32,7 @@ from chaosmining.audio.functions import *
 from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
 """
 example command to run:
-python examples/eval_audio_localization.py -d /data/home/geshi/ChaosMining/data/audio/RBFP/ -e /data/home/geshi/ChaosMining/runs/audio/RBFP/ -n arc_RNN -s 9999 --model_name RNN --n_channels 10 --length 16000 --gpu 0 --batch_size 32 --deterministic --debug
+python examples/eval_audio_localization.py -d ./data/audio/RBFP/ -e ./runs/audio/RBFP/ -n arc_RNN -s SEED --model_name RNN --n_channels 10 --length 16000 --gpu 0 --batch_size 32 --deterministic --debug
 """
 
 # load and parse argument
@@ -85,8 +84,8 @@ n_channels = args.n_channels
 length = args.length
 
 # define datasets
-train_set = ChaosAudioDataset(args.data, "train", "meta_data.csv")
-val_set = ChaosAudioDataset(args.data, "val", "meta_data.csv")
+train_set = ChaosAudioDataset(args.data, "train", "metadata.csv")
+val_set = ChaosAudioDataset(args.data, "val", "metadata.csv")
 
 num_classes = len(train_set.classes)
 
@@ -198,7 +197,6 @@ with torch.no_grad():
     metric_dict['ig_score'] = avg_ig_score
     metric_dict['dl_score'] = avg_dl_score
     metric_dict['fa_score'] = avg_fa_score
-    print(metric_dict)
     
     writer.add_hparams(hparam_dict, metric_dict)
 

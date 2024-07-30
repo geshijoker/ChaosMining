@@ -24,7 +24,7 @@ def create_simulation_data(
     num_data: int = 10000,
     X_var: float = 0.33,
     y_var: float = 0.01,
-    n_steps: int = 20,
+    n_steps: int = 10,
     ):
     """ Creating simulation data with noisy (normal distribution) features and labels.
         Args:
@@ -68,15 +68,6 @@ def create_simulation_data(
         der_func = lambdify(variables[:num_features], derivative, 'numpy')
         der_true = der_func(*X_features)+np.zeros(num_data)
         derivatives.append(der_true)
-    
-#     integrations = []
-#     for ind in range(num_features):
-#         integration = integrate(expression, variables[ind])
-#         int_func = lambdify(variables[:num_features], integration, 'numpy')
-#         baseline_features = copy.deepcopy(X_features)
-#         baseline_features[ind] = np.zeros_like(baseline_features[ind])
-#         int_true = int_func(*X_features)-int_func(*baseline_features)+np.zeros(num_data)
-#         integrations.append(int_true)
 
     integrations = [[] for ind in range(num_features)]
     for itr in range(n_steps):
@@ -100,19 +91,6 @@ def read_formulas(file_path):
             formulas.append(lines)
     formulas = [[int(formula[0]), formula[1]] for formula in formulas]
     return formulas
-    
-if __name__ == '__main__':
-    function = '(a-1)/(b**2+1)-c**3/(d**2+1)+e**5/(f**2+1)-g**7/(h**2+1)+cot(i+pi/2)'
-    num_features = 9
-    num_noises = 0
-    num_data = 10000
-    X_var = 0.33
-    y_var = 0.01
-    X, y_true, y_noise, intercepts, derivatives, integrations = create_simulation_data(function, num_features, num_noises, num_data, X_var, y_var)
-    print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape, 
-          'intercepts', len(intercepts), intercepts[0].shape,
-          'derivatives', len(derivatives), derivatives[0].shape, 
-          'integrations', len(integrations), integrations[0].shape)
     
 class ChaosVisionDataset(Dataset):
     """Vision dataset for chaos mining."""
@@ -152,41 +130,6 @@ class ChaosVisionDataset(Dataset):
 
         return sample
 
-# class ChaosAudioDataset(Dataset):
-#     """Audio dataset for chaos mining."""
-#     def __init__(self, root, split = None) -> None:
-#         if split is not None and split not in ["train", "val"]:
-#             raise ValueError("When `split` is not None, it must be one of ['training', 'validation', 'testing'].")
-        
-#         root = os.fspath(root)
-#         self.folder = os.path.join(root, split)
-#         self.meta = None
-
-#         self.classes = os.listdir(self.folder)
-#         self.audio_files = []
-#         for i in range(len(self.classes)):
-#             cla = self.classes[i]
-#             files = os.listdir(os.path.join(self.folder, cla))
-#             self.audio_files.extend(list(zip(files, [i]*len(files))))
-
-#     def load_meta(csv_file):
-#         self.meta = pd.read_csv(csv_file, index_col=0)
-            
-#     def __getitem__(self, idx):
-#         cla = self.audio_files[idx][1]
-#         audio_file = os.path.join(self.folder, self.classes[cla], self.audio_files[idx][0])
-#         sample_rate, waveform = wavfile.read(audio_file)
-#         waveform = waveform.transpose()
-#         if self.meta:
-#             pos = int(df.loc[self.audio_files[idx][0], 'Position'])
-#             sample = (Tensor(waveform), cla, pos, sample_rate)
-#         else:
-#             sample = (Tensor(waveform), cla, sample_rate)
-#         return sample
-
-#     def __len__(self):
-#         return len(self.audio_files)
-
 class ChaosAudioDataset(Dataset):
     """Audio dataset for chaos mining."""
     def __init__(self, root, split, csv_file) -> None:
@@ -207,11 +150,24 @@ class ChaosAudioDataset(Dataset):
         return len(self.df.index)
             
     def __getitem__(self, idx):
-        class_name = self.df['Label'].iloc[idx]
-        audio_file = os.path.join(self.folder, class_name, self.df['Audio'].iloc[idx])
+        class_name = self.df['label'].iloc[idx]
+        audio_file = os.path.join(self.folder, class_name, self.df['file_name'].iloc[idx])
         cla = int(self.classes.index(class_name))
         sample_rate, waveform = wavfile.read(audio_file)
         waveform = waveform.transpose()
-        pos = int(self.df['Position'].iloc[idx])
+        pos = int(self.df['position'].iloc[idx])
         sample = (Tensor(waveform), cla, pos, sample_rate)
         return sample
+
+if __name__ == '__main__':
+    function = '(a-1)/(b**2+1)-c**3/(d**2+1)+e**5/(f**2+1)-g**7/(h**2+1)+cot(i+pi/2)'
+    num_features = 9
+    num_noises = 0
+    num_data = 10000
+    X_var = 0.33
+    y_var = 0.01
+    X, y_true, y_noise, intercepts, derivatives, integrations = create_simulation_data(function, num_features, num_noises, num_data, X_var, y_var)
+    print('X', X.shape, 'y true', y_true.shape, 'y noise', y_noise.shape, 
+          'intercepts', len(intercepts), intercepts[0].shape,
+          'derivatives', len(derivatives), derivatives[0].shape, 
+          'integrations', len(integrations), integrations[0].shape)

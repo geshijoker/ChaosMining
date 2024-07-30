@@ -132,7 +132,6 @@ class AudioTCN(nn.Module):
         x = F.relu(self.bn4(x))
         x = self.pool4(x)
         x = F.max_pool1d(x, x.shape[-1])
-        # x = F.avg_pool1d(x, x.shape[-1])
         x = x.permute(0, 2, 1)
         x = torch.squeeze(x)
         x = self.fc1(x)
@@ -154,7 +153,6 @@ class AudioTrans(nn.Module):
         # RNN Layer
         encoder_layer = nn.TransformerEncoderLayer(self.hidden_dim, nhead=6)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
-        # nn.Transformer(hidden_dim, nhead=6, num_encoder_layers=n_layers, num_decoder_layers=n_layers, batch_first=True, dropout=0.1)   
         # Fully connected layer
         self.fc1 = nn.Linear(self.hidden_dim, output_size)
 

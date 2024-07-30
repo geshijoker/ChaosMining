@@ -49,11 +49,6 @@ def get_multi_box(attr_sample, size, sign="absolute_value"):
         max_x.append(pos[:,0].max())
         min_y.append(pos[:,1].min())
         max_y.append(pos[:,1].max())
-    # print('threshold', threshold.shape)
-    # pos = np.argwhere(attr_sample-threshold>0)
-    # print('pos shape', pos.shape)
-    # pos = np.reshape(pos, (bs, size, -1))
-    # min_x, max_x, min_y, max_y = pos[...,-2].min(axis=-1), pos[...,-2].max(axis=-1), pos[...,-1].min(axis=-1), pos[...,-1].max(axis=-1)
     return np.array(min_x), np.array(max_x), np.array(min_y), np.array(max_y)
 
 def show_rects(pred, gtrue, attr_sample):

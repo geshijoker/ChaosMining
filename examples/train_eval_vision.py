@@ -21,14 +21,12 @@ import torch.backends.cudnn as cudnn
 from torchvision import models, transforms
 from torch.utils.tensorboard import SummaryWriter
 
-sys.path.append("/home/geshi/ChaosMining")
-
 from chaosmining.data_utils import ChaosVisionDataset
 from chaosmining.utils import check_make_dir
 from chaosmining.vision import parse_argument, train_epoch, test
 """
 example command to run:
-python examples/train_eval_vision.py -d /data/home/geshi/ChaosMining/data/vision/RBFP/ -e /data/home/geshi/ChaosMining/runs/vision/RBRP/ -n arc_vit_b_16 -s 8357 --model_name vit_b_16 --gpu 1 --num_classes 10 --num_epochs 20 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
+python examples/train_eval_vision.py -d ./data/vision/RBFP/ -e ./runs/vision/RBFP/ -n arc_vit_b_16 -s SEED --model_name vit_b_16 --gpu 0 --num_classes 10 --num_epochs 30 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
 """
 
 # load and parse argument
@@ -106,12 +104,12 @@ target_transform = transforms.Compose([
 # load data
 root_dir = args.data
 train_data = os.path.join(root_dir, 'train')
-train_csv_file = os.path.join(train_data, 'meta_data.csv')
+train_csv_file = os.path.join(train_data, 'metadata.csv')
 trainset = ChaosVisionDataset(train_data, train_csv_file, transform=data_transform, target_transform=target_transform)
 train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
 
 val_data = os.path.join(root_dir, 'val')
-val_csv_file = os.path.join(val_data, 'meta_data.csv')
+val_csv_file = os.path.join(val_data, 'metadata.csv')
 valset = ChaosVisionDataset(val_data, val_csv_file, transform=data_transform, target_transform=target_transform)
 val_loader = DataLoader(valset, batch_size=batch_size, shuffle=False)
 
@@ -139,7 +137,7 @@ model.train()
 # prepare for training
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=lr)
-scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 20)
+scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 30)
 # scheduler = lr_scheduler.StepLR(optimizer, 20)
 
 print('Starting training loop; initial compile can take a while...')

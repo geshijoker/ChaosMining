@@ -20,8 +20,6 @@ from torch.optim import lr_scheduler
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
-sys.path.append("/home/geshi/ChaosMining")
-
 from chaosmining.data_utils import create_simulation_data, read_formulas
 from chaosmining.simulation import parse_argument, functions
 from chaosmining.simulation.models import MLPRegressor
@@ -34,7 +32,7 @@ from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-python examples/train_eval_simulation_topk.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/topk_simulation/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
+python examples/train_eval_simulation_topk.py -d ./data/symbolic_simulation/formula.csv -e ./runs/topk_simulation/ -n 14 -s SEED --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
 """
 
 # load and parse argument
@@ -168,12 +166,13 @@ for index, formula in enumerate(formulas):
 
     print('Starting training loop; initial compile can take a while...')
     since = time.time()
-    model.train()   # Set model to evaluate mode
+    model.train()
 
     loss = train(model, train_loader, num_epochs, optimizer)
     time_elapsed = time.time() - since
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {loss:3f}')
-    
+    model.eval()
+
     y_pred = model(Tensor(X_test).to(device)).detach().cpu().numpy()
     mean_abs_y_diff, std_abs_y_diff = functions.mean_std_absolute_error(y_pred, y_true_test)
     Pred_score = functions.uniformity_score(y_pred, y_true_test)

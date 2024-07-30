@@ -15,7 +15,7 @@ Source code of ["ChaosMining: A Benchmark to Evaluate Post-Hoc Local Attribution
 
 ## Dataset 
 
-The dataset is accessible on [huggingface]([https://zenodo.org/records/11582545](https://huggingface.co/datasets/geshijoker/chaosmining) with a DOI doi:10.57967/hf/2482
+The dataset is accessible on [huggingface](https://huggingface.co/datasets/geshijoker/chaosmining) with a DOI doi:10.57967/hf/2482
 A detailed datacard, dataset viewer, and Croissant metadata are accessible through huggingface. We provide the dataset structure here as a preview.
 
     ./data/

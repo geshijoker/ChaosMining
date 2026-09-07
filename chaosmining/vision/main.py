@@ -15,18 +15,20 @@ from torch import Tensor
 
 def parse_argument():
     parser = argparse.ArgumentParser(description='Parse Argument for Vision Experiment')
-    parser.add_argument('--data', '-d', type=str, required=True,
+    parser.add_argument('--data', '-d', type=str, required=False,
                         help='Path to the file saving the formulas')
+    #add parse
+    parser.add_argument('--cfg_suffix', '-c', type=str, required=True,choices=['RBFP', 'RBRP', 'SBFP', 'SBRP'], help='RBFP/RBRP/SBFP/SBRP')
     parser.add_argument('--experiment', '-e', type=str, required=True,
                         help='Name of the experiment')
     parser.add_argument('--name', '-n', type=str, required=True, 
                         help='Name of run')
-    parser.add_argument('--model_name', '-m', type=str, required=True, choices = ['alexnet', 'googlenet', 'densenet121', 'resnet18', 'resnet50', 'vgg13', 'vit_b_16', 'vit_l_32'], help='Name of the model architecture')
+    parser.add_argument('--model_name', '-m', type=str, required=True, choices = ['alexnet', 'googlenet', 'densenet121', 'resnet18', 'resnet50', 'vgg16', 'vit_b_16', 'vit_l_32','densenet161','swin_t','efficientnet_v2_s','convnext_tiny'], help='Name of the model architecture')
     parser.add_argument('--seed', '-s', type=int, default=None, 
                         help='which seed for random number generator to use')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='which GPU to use, negative value denotes cpu will be used')
-    parser.add_argument('--num_classes', type=int, default=0,
+    parser.add_argument('--num_classes', type=int, default=10,
                         help='Number of classes')
     parser.add_argument('--num_epochs', type=int, default=20,
                         help='the number of epochs for training')

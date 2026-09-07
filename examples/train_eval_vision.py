@@ -4,7 +4,6 @@ import random
 import sys
 import os
 import argparse
-
 import numpy as np
 from tqdm import tqdm, trange
 from ptflops import get_model_complexity_info
@@ -21,14 +20,21 @@ import torch.backends.cudnn as cudnn
 from torchvision import models, transforms
 from torch.utils.tensorboard import SummaryWriter
 
-from chaosmining.data_utils import ChaosVisionDataset
+import torch.multiprocessing as mp
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from chaosmining.data_utils import ChaosVisionHFDataset
 from chaosmining.utils import check_make_dir
 from chaosmining.vision import parse_argument, train_epoch, test
+os.environ["HF_TOKEN"] ="your_huggingface_token_here"
+# os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+os.environ["HF_ENDPOINT"] = "your_huggingface_endpoint_here"
 """
-example command to run:
-python examples/train_eval_vision.py -d ./data/vision/RBFP/ -e ./runs/vision/RBFP/ -n arc_vit_b_16 -s SEED --model_name vit_b_16 --gpu 0 --num_classes 10 --num_epochs 30 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
+python train_eval_vision.py -c RBFP -e ./results/vision/RBFP/ -n arc_vit_b_16 -s 42 --model_name vit_b_16 --gpu 0 --num_classes 10 --num_epochs 30 --batch_size 128 --learning_rate 0.001 --pretrained --deterministic --debug
 """
-
 # load and parse argument
 args = parse_argument()
 
@@ -57,7 +63,7 @@ run_name = args.name + f'_seed_{seed}'
 log_path = os.path.join(experiment, run_name)
 
 if os.path.isdir(log_path):
-    sys.exit('The name of the run has alrealy exist')
+    sys.exit('The name of the run has already exist')
 else:
     check_make_dir(log_path)
 
@@ -73,7 +79,7 @@ if args.debug:
     torch.autograd.set_detect_anomaly(True)
 else:
     torch.autograd.set_detect_anomaly(False)
-    sys.stdout = open(os.path.join(log_path, 'log.txt'), 'w')
+    sys.stdout = open(os.path.join(log_path, 'log.txt'), 'w', encoding='utf-8')
     
 if args.pretrained:
     model =  models.get_model(args.model_name, weights="DEFAULT")
@@ -86,32 +92,39 @@ num_classes = args.num_classes
 lr = args.learning_rate
 
 # define transforms
-
 class ToTensor(object):
     """Convert values in landmarks to Tensors."""
     def __call__(self, landmarks):
         return [torch.tensor(landmark) for landmark in landmarks]
 
 data_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize((0.5), (0.5))
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
 target_transform = transforms.Compose([
         ToTensor(),
     ])
 
-# load data
-root_dir = args.data
-train_data = os.path.join(root_dir, 'train')
-train_csv_file = os.path.join(train_data, 'metadata.csv')
-trainset = ChaosVisionDataset(train_data, train_csv_file, transform=data_transform, target_transform=target_transform)
-train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
+trainset = ChaosVisionHFDataset(
+    hf_dataset_name="geshijoker/chaosmining",
+    config_name="vision_" + args.cfg_suffix,
+    split="train",
+    transform=data_transform,
+    target_transform=target_transform
+)
 
-val_data = os.path.join(root_dir, 'val')
-val_csv_file = os.path.join(val_data, 'metadata.csv')
-valset = ChaosVisionDataset(val_data, val_csv_file, transform=data_transform, target_transform=target_transform)
-val_loader = DataLoader(valset, batch_size=batch_size, shuffle=False)
+train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+
+valset = ChaosVisionHFDataset(
+    hf_dataset_name="geshijoker/chaosmining",   
+    config_name="vision_" + args.cfg_suffix,
+    split="validation",
+    transform=data_transform,
+    target_transform=target_transform
+)
+val_loader = DataLoader(valset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
 target_names = trainset.get_target_names()
 target_index = target_names.index('foreground_label')
@@ -128,9 +141,6 @@ model.eval()
 out = model(sample)
 print('sample output', out.shape)
 summary(model, input_size=sample_shape)
-# macs, params = get_model_complexity_info(model, (3, 224, 224), as_strings=True, backend='pytorch', print_per_layer_stat=True, verbose=True)
-# print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
-# print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 model.to(device)
 model.train()
 
@@ -138,7 +148,6 @@ model.train()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=lr)
 scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 30)
-# scheduler = lr_scheduler.StepLR(optimizer, 20)
 
 print('Starting training loop; initial compile can take a while...')
 since = time.time()
@@ -151,7 +160,6 @@ def save_checkpoint():
     torch.save({'model_state_dict': model.state_dict()}, model_path)
 
 pbar = trange(num_epochs, desc='Train', unit='epoch', initial=start_epoch, position=0, disable=not args.debug)
-# Iterate over data.
 for epoch in pbar:
     model, train_stats = train_epoch(model, train_loader, target_index, num_classes, criterion, optimizer, scheduler, device, args.debug)
 

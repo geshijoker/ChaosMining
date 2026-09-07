@@ -8,6 +8,7 @@ import scipy
 from sympy import *
 from scipy.io import wavfile
 
+import torch
 import pandas as pd
 from PIL import Image 
 from torch.utils.data import Dataset, DataLoader
@@ -16,6 +17,9 @@ from torchaudio.transforms import MelSpectrogram
 from torch import Tensor
 from torch import nn
 import torch.nn.functional as F
+from datasets import load_dataset
+from PIL import Image
+from torchvision import transforms
 
 def create_simulation_data(
     function: str,
@@ -92,44 +96,61 @@ def read_formulas(file_path):
     formulas = [[int(formula[0]), formula[1]] for formula in formulas]
     return formulas
     
-class ChaosVisionDataset(Dataset):
-    """Vision dataset for chaos mining."""
-
-    def __init__(self, root_dir, csv_file, transform=None, target_transform=None):
+class ChaosVisionHFDataset(Dataset):
+    """from Hugging Face Hub load ChaosMining vision datasets"""
+    def __init__(self, 
+                 hf_dataset_name: str,
+                 config_name: str,      
+                 split: str,            
+                 transform=None, 
+                 target_transform=None):
         """
-        Arguments:
-            root_dir (string): Directory with all the images.
-            csv_file (string): Path to the csv file with annotations.
-            transform (callable, optional): Optional transform to be applied on a sample.
-            target_transform (callable, optional): Optional transform to be applied on a target.
+        config:
+        - hf_dataset_name: HF Hub datasets name, e.g., "geshijoker/chaosmining"
+        - config_name: vision config: vision_RBFP/vision_RBRP/vision_SBFP/vision_SBRP
+        - split: datasets spilts train/val/test
+        - transform: image transform
+        - target_transform: label transform
         """
-        self.root_dir = root_dir
-        self.df = pd.read_csv(csv_file)
+        self.dataset = load_dataset(
+            hf_dataset_name,
+            config_name,
+            split=split,
+            trust_remote_code=True  
+        )
         self.transform = transform
         self.target_transform = target_transform
-        
+        self.target_names = self._get_target_names()
+
+    def _get_target_names(self):
+        feature_names = list(self.dataset.features.keys())
+        feature_names.remove("image")
+        return feature_names
+
     def get_target_names(self):
-        names = list(self.df.columns.values)
-        names.pop(0)
-        return names
+        return self.target_names
 
     def __len__(self):
-        return len(self.df.index)
+        return len(self.dataset)
 
     def __getitem__(self, idx):
-
-        img_name = os.path.join(self.root_dir, self.df.iloc[idx, 0])
-        image = Image.open(img_name)  
-        landmarks = self.df.iloc[idx, 1:].values
+        hf_sample = self.dataset[idx]
+        image = hf_sample["image"]
+        if not isinstance(image, Image.Image):
+            image = Image.fromarray(image)
+        landmarks = []
+        for target_name in self.target_names:
+            landmarks.append(hf_sample[target_name])
+        landmarks = torch.tensor(landmarks, dtype=torch.long)
 
         if self.transform:
             image = self.transform(image)
         if self.target_transform:
             landmarks = self.target_transform(landmarks)
         sample = (image, landmarks)
-
         return sample
 
+        
 class ChaosAudioDataset(Dataset):
     """Audio dataset for chaos mining."""
     def __init__(self, root, split, csv_file) -> None:

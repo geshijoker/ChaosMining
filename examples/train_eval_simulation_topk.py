@@ -20,19 +20,24 @@ from torch.optim import lr_scheduler
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.append("C:\\2025fall\\chaosMining\\ChaosMining-main")
+
 from chaosmining.data_utils import create_simulation_data, read_formulas
 from chaosmining.simulation import parse_argument, functions
-from chaosmining.simulation.models import MLPRegressor
+from chaosmining.simulation.models import MLPResRegressor
 from chaosmining.utils import check_make_dir
 
-from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
+# from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
+from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation, Lime
+import shap  
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-python examples/train_eval_simulation_topk.py -d ./data/symbolic_simulation/formula.csv -e ./runs/topk_simulation/ -n 14 -s SEED --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
+python train_eval_simulation_overparam_topk.py -d ../data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/simulation_overparam_topk/ -n 14 -s 9999 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic
 """
 
 # load and parse argument
@@ -127,6 +132,12 @@ DeepLift_scores=[]
 FA_scores=[]
 Saliency_scores=[] 
 IG_scores=[]
+"""
+new methods
+"""
+LIME_scores=[]
+LayerCAM_scores=[]
+SHAP_scores=[]
 
 for index, formula in enumerate(formulas):
 
@@ -157,7 +168,7 @@ for index, formula in enumerate(formulas):
     test_set = TensorDataset(Tensor(X_test), Tensor(y_test))
     test_loader = DataLoader(test_set, batch_size=y_test.shape[0], shuffle=False)
 
-    model = MLPRegressor(num_features+num_noises, hidden_layer_sizes, p=dropout)    
+    model = MLPResRegressor(num_features+num_noises, hidden_layer_sizes, p=dropout)    
     model.to(device)
     model.train()
 
@@ -166,13 +177,12 @@ for index, formula in enumerate(formulas):
 
     print('Starting training loop; initial compile can take a while...')
     since = time.time()
-    model.train()
+    model.train()   # Set model to evaluate mode
 
     loss = train(model, train_loader, num_epochs, optimizer)
     time_elapsed = time.time() - since
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {loss:3f}')
-    model.eval()
-
+    
     y_pred = model(Tensor(X_test).to(device)).detach().cpu().numpy()
     mean_abs_y_diff, std_abs_y_diff = functions.mean_std_absolute_error(y_pred, y_true_test)
     Pred_score = functions.uniformity_score(y_pred, y_true_test)
@@ -181,34 +191,56 @@ for index, formula in enumerate(formulas):
     ig = IntegratedGradients(model)
     dl = DeepLift(model)
     fa = FeatureAblation(model)
+    #new methods
+    lime = Lime(model)
+    layercam = LayerCAM(model)
+    explainer = shap.DeepExplainer(model, Tensor(X_train).to(device))
+
+
 
     sa_attr_test = sa.attribute(Tensor(X_test).to(device))
     ig_attr_test = ig.attribute(Tensor(X_test).to(device), n_steps=10)
     dl_attr_test = dl.attribute(Tensor(X_test).to(device))
     fa_attr_test = fa.attribute(Tensor(X_test).to(device))
+    # new methods
+    lime_attr_test = lime.attribute(Tensor(X_test).to(device))
+    layercam_attr_test = layercam.attribute(Tensor(X_test).to(device))
+    shap_attr_test = explainer.shap_values(Tensor(X_test).to(device))
 
     sa_topk_inds = functions.abs_argmax_topk(sa_attr_test.detach().cpu().numpy(), num_features)
     ig_topk_inds = functions.abs_argmax_topk(ig_attr_test.detach().cpu().numpy(), num_features)
     dl_topk_inds = functions.abs_argmax_topk(dl_attr_test.detach().cpu().numpy(), num_features)
     fa_topk_inds = functions.abs_argmax_topk(fa_attr_test.detach().cpu().numpy(), num_features)
+    # new methods
+    lime_topk_inds = functions.abs_argmax_topk(lime_attr_test.detach().cpu().numpy(), num_features)
+    layercam_topk_inds = functions.abs_argmax_topk(layercam_attr_test.detach().cpu().numpy(), num_features)
+    shap_topk_inds = functions.abs_argmax_topk(np.array(shap_attr_test), num_features)
 
     Saliency_score = functions.top_features_score(sa_topk_inds, num_features)
     IG_score = functions.top_features_score(ig_topk_inds, num_features)
     DeepLift_score = functions.top_features_score(dl_topk_inds, num_features)
     FA_score = functions.top_features_score(fa_topk_inds, num_features)
+    # new methods
+    LIME_score = functions.top_features_score(lime_topk_inds, num_features)
+    LayerCAM_score = functions.top_features_score(layercam_topk_inds, num_features)
+    SHAP_score = functions.top_features_score(shap_topk_inds, num_features)
 
     Pred_scores.append(Pred_score) 
     Saliency_scores.append(Saliency_score)
     IG_scores.append(IG_score)
     DeepLift_scores.append(DeepLift_score)
     FA_scores.append(FA_score)
+    #new methods
+    LIME_scores.append(LIME_score)
+    LayerCAM_scores.append(LayerCAM_score)
+    SHAP_scores.append(SHAP_score)
 
     hparam_dict = {'formula_id':index, 'num_features':num_features, 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
-    metric_dict = {'Pred':Pred_score, 'Saliency':Saliency_score, 'IG':IG_score, 'DeepLift':DeepLift_score, 'FA':FA_score}
+    metric_dict = {'Pred':Pred_score, 'Saliency':Saliency_score, 'IG':IG_score, 'DeepLift':DeepLift_score, 'FA':FA_score, 'LIME':LIME_score, 'LayerCAM':LayerCAM_score, 'SHAP':SHAP_score}
     writer.add_hparams(hparam_dict, metric_dict)
 
 hparam_dict = {'formula_id':'mean', 'num_features':'N/A', 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
-metric_dict = {'Pred':np.mean(Pred_scores), 'Saliency':np.mean(Saliency_scores), 'IG':np.mean(IG_scores), 'DeepLift':np.mean(DeepLift_scores), 'FA':np.mean(FA_scores)}
+metric_dict = {'Pred':np.mean(Pred_scores), 'Saliency':np.mean(Saliency_scores), 'IG':np.mean(IG_scores), 'DeepLift':np.mean(DeepLift_scores), 'FA':np.mean(FA_scores), 'LIME':np.mean(LIME_scores), 'LayerCAM':np.mean(LayerCAM_scores), 'SHAP':np.mean(SHAP_scores)}
 writer.add_hparams(hparam_dict, metric_dict)
 
 writer.flush()

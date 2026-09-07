@@ -40,8 +40,7 @@ def parse_argument():
                         help='Learning rate for training')
     parser.add_argument('--dropout', type=float, default=0.0,
                         help='Dropout rate (float in the range [0, 1])')
-    parser.add_argument('--xai', type=str, choices=['no_xai', 'sa', 'ig', 'dl', 'fa'],
-                        help='Type of post-hoc xai method')
+    parser.add_argument('--xai',type=str,choices=['no_xai','sa','ig','dl','fa','gb','lime','ks','dls'],help='Type of post-hoc xai method')
     parser.add_argument('--deterministic', action='store_true',
                         help='Using deterministic mode and disable benchmark algorithms')
     parser.add_argument('--debug', action='store_true',

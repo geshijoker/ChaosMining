@@ -1,5 +1,6 @@
 import time
 import os
+os.environ["HF_DATASETS_DISABLE_TORCHCODEC"] = "1"
 import sys
 import copy
 import datetime
@@ -23,16 +24,18 @@ import numpy as np
 from tqdm import tqdm, trange
 from thop import profile, clever_format
 from torchinfo import summary
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from chaosmining.data_utils import ChaosAudioDataset
 from chaosmining.utils import check_make_dir
 from chaosmining.audio.models import *
 from chaosmining.audio import parse_argument, train_epoch, test
 from chaosmining.audio.functions import *
-
+from chaosmining.audio.functions import HFChaosMiningAudioDataset
+os.environ["HF_TOKEN"] ="your_huggingface_token_here"
+os.environ["HF_ENDPOINT"] = "your_huggingface_endpoint_here"
 """
 example command to run:
-python examples/train_eval_audio.py -d ./data/audio/RBFP/ -e ./runs/audio/RBFP/ -n arc_TRAN -s SEED --model_name TRAN --n_channels 10 --length 16000 --gpu 0 --num_epochs 30 --batch_size 128 --learning_rate 0.0001 --deterministic --debug
+python train_eval_audio.py --hf_dataset audio_SBRP --experiment ./results/audio/SBRP/ --name arc_Conformer --seed 42 --model_name Conformer --learning_rate 0.001 --n_channels 10 --length 16000 --gpu 0 --num_epochs 30 --batch_size 128 --deterministic
 """
 
 # load and parse argument
@@ -89,25 +92,60 @@ length = args.length
 
 # define datasets
 
-train_set = ChaosAudioDataset(args.data, "train", "metadata.csv")
-val_set = ChaosAudioDataset(args.data, "val", "metadata.csv")
+# train_set = ChaosAudioDataset(args.data, "train", "metadata.csv")
+# val_set = ChaosAudioDataset(args.data, "val", "metadata.csv")
+
+subset = args.hf_dataset 
+if not subset:
+    raise ValueError("through --hf_dataset define the subset of HF ChaosMining Audio dataset to use, e.g., audio_RBFP, audio_RBRP, audio_SBFP, audio_SBRP")
+train_set = HFChaosMiningAudioDataset(
+    subset_name=subset,
+    split="train",
+    target_length=length
+)
+
+val_set = HFChaosMiningAudioDataset(
+    subset_name=subset,
+    split="val",
+    target_length=length
+)
 
 num_classes = len(train_set.classes)
+print(f"traning set sample count: {len(train_set)}")
+print(f"validation set sample count: {len(val_set)}")
+print(f"num classes: {num_classes}")
 
-# define dataloaders
-train_loader = torch.utils.data.DataLoader(
+# initial DataLoader
+print(f"Number of classes: {num_classes}")
+train_loader = DataLoader(
     train_set,
     batch_size=batch_size,
     shuffle=True,
-    collate_fn=collate_fn,
+    collate_fn=collate_fn
 )
-val_loader = torch.utils.data.DataLoader(
+val_loader = DataLoader(
     val_set,
     batch_size=batch_size,
     shuffle=False,
     drop_last=False,
-    collate_fn=collate_fn,
+    collate_fn=collate_fn
 )
+
+print("\n=== Test first sample in train_set ===")
+waveform, label, pos, sample_rate = train_set[0]
+print("Waveform shape:", waveform.shape)
+print("Waveform min:", waveform.min().item(), "max:", waveform.max().item())
+print("Label index:", label)
+print("Label str:", train_set.classes[label])
+
+
+# print("Train set length:", len(train_set))
+# for i in range(3):
+#     x, y = train_set[i]
+#     print(f"Sample {i} waveform shape: {x.shape}, label index: {y}, label str: {train_set.labels[y]}")
+
+# test audio sample shape
+
 
 # create model
 if args.model_name == "RNN":
@@ -118,6 +156,13 @@ elif args.model_name == "TCN":
     model = AudioTCN(n_channels, num_classes, n_channel=60)
 elif args.model_name == "TRAN":
     model = AudioTrans(n_channels, num_classes, hidden_dim=60, n_layers=3)
+#add
+elif args.model_name == "Wav2Vec2Model":
+    model = AudioWav2Vec2(n_channels, num_classes, freeze_feature_extractor=args.freeze_feature_extractor)
+elif args.model_name == "RNNT":
+    model = AudioRNNT(n_channels, num_classes)
+elif args.model_name == "Conformer":
+    model = AudioConformer(n_channels, num_classes)
 else:
     sys.exit("The model {} is not supported".format(args.model_name))
 
@@ -129,11 +174,13 @@ out = model(sample)
 print('sample output', out.shape)
 summary(model, input_size=sample_shape)
 
-flops, params = profile(model.cpu(), inputs=(sample.cpu(),))
-flops, params = clever_format([flops, params], "%.3f")
-print(f"FLOPs: {flops}, Parameters: {params}")
+# torch.nn.Conv1d.total_ops = torch.nn.Conv2d.total_ops
+# flops, params = profile(model.cpu(), inputs=(sample.cpu(),))
+# flops, params = clever_format([flops, params], "%.3f")
+# print(f"FLOPs: {flops}, Parameters: {params}")
 
 model.to(device)
+
 model.train()
 
 # prepare for training

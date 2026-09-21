@@ -19,24 +19,20 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from chaosmining.data_utils import create_simulation_data, read_formulas
 from chaosmining.simulation import parse_argument, functions
 from chaosmining.simulation.models import MLPRegressor
 from chaosmining.utils import check_make_dir
 
-from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation
+from captum.attr import IntegratedGradients, Saliency, DeepLift, FeatureAblation,Lime, KernelShap, LayerGradCam
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
 
 """
 example command to run:
-<<<<<<< HEAD
-python examples/train_eval_simulation.py -d /data/home/geshi/ChaosMining/data/symbolic_simulation/formula.csv -e /data/home/geshi/ChaosMining/runs/simulation/ -n 14 -s 1111 --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
-=======
-python examples/train_eval_simulation.py -d ./data/symbolic_simulation/formula.csv -e ./runs/simulation/ -n 14 -s SEED --num_noises 100 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic --debug
->>>>>>> ziwen
+python train_eval_simulation.py -d ../data/symbolic_simulation/formula.csv -e ./runs/topk_simulation/ -n 14 -s 43 --num_noises 25 --ny_var 0.01 --optimizer Adam --learning_rate 0.001 --deterministic
 """
 
 # load and parse argument
@@ -126,11 +122,15 @@ def train(model, dataloader, num_epochs, optimizer):
 
 writer = SummaryWriter(log_path)
 
+Pred_scores=[]
 DeepLift_scores=[]
 FA_scores=[]
 Saliency_scores=[] 
 IG_scores=[]
-
+#new method 
+Lime_scores=[]
+KS_scores=[]
+Cam_scores=[]
 for index, formula in enumerate(formulas):
 
     function = formula[1]
@@ -169,37 +169,86 @@ for index, formula in enumerate(formulas):
 
     print('Starting training loop; initial compile can take a while...')
     since = time.time()
-    model.train()   # Set model to evaluate mode
+    model.train()
 
     loss = train(model, train_loader, num_epochs, optimizer)
     time_elapsed = time.time() - since
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s, last epoch loss: {loss:3f}')
+    model.eval()
 
-    ig = IntegratedGradients(model)
+    y_pred = model(Tensor(X_test).to(device)).detach().cpu().numpy()
+    mean_abs_y_diff, std_abs_y_diff = functions.mean_std_absolute_error(y_pred, y_true_test)
+    Pred_score = functions.uniformity_score(y_pred, y_true_test)
+
     sa = Saliency(model)
+    ig = IntegratedGradients(model)
+    dl = DeepLift(model)
     fa = FeatureAblation(model)
 
-    ig_attr_test = ig.attribute(Tensor(X_test).to(device), n_steps=20)
+    #new method
+    ks=KernelShap(model)
+    lime=Lime(model)
+    layer = model.blocks[-1].net[0]
+    cam=LayerGradCam(model, layer)
+
     sa_attr_test = sa.attribute(Tensor(X_test).to(device))
+    ig_attr_test = ig.attribute(Tensor(X_test).to(device), n_steps=10)
+    dl_attr_test = dl.attribute(Tensor(X_test).to(device))
     fa_attr_test = fa.attribute(Tensor(X_test).to(device))
-    
-    FA_score = functions.uniformity_score(functions.normalize_attr(fa_attr_test.detach().cpu().numpy())[:,:num_features], \
-                                          functions.normalize_attr(intercepts_test)[:,:num_features])
-    Saliency_score = functions.uniformity_score(functions.normalize_attr(sa_attr_test.detach().cpu().numpy())[:,:num_features], \
-                                               functions.normalize_attr(derivatives_test)[:,:num_features])
-    IG_score = functions.uniformity_score(functions.normalize_attr(ig_attr_test.detach().cpu().numpy())[:,:num_features], \
-                                          functions.normalize_attr(integrations_test)[:,:num_features])
-    
-    FA_scores.append(FA_score)
+    #new method
+    ks_attr_test =ks.attribute(Tensor(X_test).to(device))
+    lime_attr_test = lime.attribute(Tensor(X_test).to(device))
+    cam_attr_test= cam.attribute(Tensor(X_test).to(device))
+
+    sa_topk_inds = functions.abs_argmax_topk(sa_attr_test.detach().cpu().numpy(), num_features)
+    ig_topk_inds = functions.abs_argmax_topk(ig_attr_test.detach().cpu().numpy(), num_features)
+    dl_topk_inds = functions.abs_argmax_topk(dl_attr_test.detach().cpu().numpy(), num_features)
+    fa_topk_inds = functions.abs_argmax_topk(fa_attr_test.detach().cpu().numpy(), num_features)
+    #new method
+    ks_topk_inds = functions.abs_argmax_topk(ks_attr_test.detach().cpu().numpy(), num_features)
+    lime_topk_inds = functions.abs_argmax_topk(lime_attr_test.detach().cpu().numpy(), num_features)
+
+    def flatten_attr(attr):
+        arr = np.array(attr)
+        if arr.ndim > 2:
+            arr = arr.reshape(arr.shape[0], -1)  # (batch, *) -> (batch, num_features)
+        return arr
+
+    # cam_flat = flatten_attr(cam_attr_test.detach().cpu().numpy())
+    # cam_topk_inds = functions.abs_argmax_topk(cam_flat, num_features)
+    cam_input_attr = cam_attr_test * Tensor(X_test).to(device)
+    cam_flat = cam_input_attr.detach().cpu().numpy().reshape(X_test.shape)
+    cam_topk_inds = functions.abs_argmax_topk(cam_flat, num_features)
+    # cam_input_attr = sa_attr_test.detach() * Tensor(X_test).to(device)
+    # cam_flat = cam_input_attr.cpu().numpy()
+    # cam_topk_inds = functions.abs_argmax_topk(cam_flat, num_features)
+
+    Saliency_score = functions.top_features_score(sa_topk_inds, num_features)
+    IG_score = functions.top_features_score(ig_topk_inds, num_features)
+    DeepLift_score = functions.top_features_score(dl_topk_inds, num_features)
+    FA_score = functions.top_features_score(fa_topk_inds, num_features)
+    #new method
+    KS_score = functions.top_features_score(ks_topk_inds,num_features)
+    Lime_score = functions.top_features_score(lime_topk_inds,num_features)
+    Cam_score = functions.top_features_score(cam_topk_inds,num_features)
+
+
+    Pred_scores.append(Pred_score) 
     Saliency_scores.append(Saliency_score)
     IG_scores.append(IG_score)
+    DeepLift_scores.append(DeepLift_score)
+    FA_scores.append(FA_score)
+    #new method
+    KS_scores.append(KS_score)
+    Lime_scores.append(Lime_score)
+    Cam_scores.append(Cam_score)
 
     hparam_dict = {'formula_id':index, 'num_features':num_features, 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
-    metric_dict = {'FA':FA_score, 'Saliency':Saliency_score, 'IG':IG_score}
+    metric_dict = {'Pred':Pred_score, 'Saliency':Saliency_score, 'IG':IG_score, 'DeepLift':DeepLift_score, 'FA':FA_score, 'KS':KS_score, 'Lime':Lime_score, 'Cam': Cam_score}
     writer.add_hparams(hparam_dict, metric_dict)
 
 hparam_dict = {'formula_id':'mean', 'num_features':'N/A', 'num_data':num_data, 'num_noises':num_noises, 'y_var':y_var}
-metric_dict = {'FA':np.mean(FA_scores), 'Saliency':np.mean(Saliency_scores), 'IG':np.mean(IG_scores)}
+metric_dict = {'Pred':np.mean(Pred_scores), 'Saliency':np.mean(Saliency_scores), 'IG':np.mean(IG_scores), 'DeepLift':np.mean(DeepLift_scores), 'FA':np.mean(FA_scores), 'KS':np.mean(KS_scores),'Lime':np.mean(Lime_scores), 'Cam':np.mean(Cam_scores)}
 writer.add_hparams(hparam_dict, metric_dict)
 
 writer.flush()

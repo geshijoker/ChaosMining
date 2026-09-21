@@ -16,14 +16,15 @@ from torch.utils.data import Dataset, DataLoader
 
 def parse_argument():
     parser = argparse.ArgumentParser(description='Parse Argument for Audio Experiment')
-    parser.add_argument('--data', '-d', type=str, required=True,
+    parser.add_argument('--data', '-d', type=str, required=False,default=None,
                         help='Path to the folder of audio files')
     parser.add_argument('--experiment', '-e', type=str, required=True,
                         help='Name of the experiment')
     parser.add_argument('--name', '-n', type=str, required=True, 
                         help='Name of run')
-    parser.add_argument('--model_name', '-m', type=str, required=True, choices = ['RNN', 'LSTM', 'TCN', 'TRAN'], 
+    parser.add_argument('--model_name', '-m', type=str, required=True, choices = ['RNN', 'LSTM', 'TCN', 'TRAN','Wav2Vec2Model','RNNT','Conformer'], 
                         help='Name of the model architecture')
+    # parser.add_argument('--model_name', '-m', type=str, required=True, choices = ['alexnet', 'googlenet', 'densenet121', 'resnet18', 'resnet50', 'vgg16', 'vit_b_16', 'vit_l_32','densenet161','swin_t','efficientnet_v2_s','convnext_tiny'], help='Name of the model architecture')
     parser.add_argument('--n_channels', type=int, default=10,
                         help='Number of channels')
     parser.add_argument('--length', type=int, default=16000,
@@ -32,7 +33,7 @@ def parse_argument():
                         help='which seed for random number generator to use')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='which GPU to use, negative value denotes cpu will be used')
-    parser.add_argument('--num_epochs', type=int, default=20,
+    parser.add_argument('--num_epochs', type=int, default=30,
                         help='the number of epochs for training')
     parser.add_argument('--batch_size', type=int, default=128,
                         help='the batch size of data loading')
@@ -42,6 +43,16 @@ def parse_argument():
                         help='Using deterministic mode and disable benchmark algorithms')
     parser.add_argument('--debug', action='store_true',
                         help='Using debug mode')
+    parser.add_argument('--hf_dataset', type=str, default=None,
+                        help='HuggingFace dataset id to use instead of local data (e.g. "common_voice/xx")')
+    parser.add_argument('--hf_split', type=str, default='train',
+                        help='Split name for the HF dataset (train/validation)')
+    parser.add_argument('--hf_audio_col', type=str, default='audio',
+                        help='Column name in HF dataset that contains audio')
+    parser.add_argument('--hf_label_col', type=str, default='label',
+                        help='Column name in HF dataset that contains labels')
+    parser.add_argument('--freeze_feature_extractor', action='store_true',
+                    help='Freeze Wav2Vec2 feature extractor for fine-tuning')
 
     args = parser.parse_args()
     

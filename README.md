@@ -312,9 +312,8 @@ Replace `--model_name` with any of: `RNN`, `LSTM`, `TCN`, `TRAN`, `Wav2Vec2Model
 
 ```bibtex
 @misc{shi2024chaosminingbenchmarkevaluateposthoc,
-      title={ChaosMining: A Benchmark to Evaluate Post-Hoc Local Attribution Methods 
-             in Low SNR Environments}, 
-      author={Ge Shi and Ziwen Kan and Jason Smucny and Ian Davidson},
+      title={ChaosMining: Benchmarking Post-Hoc Attribution with Sparse Informative Features in High Dimensions}, 
+      author={Ge Shi and Fangyi Liu and Ziwen Kan and Menglin Liu},
       year={2024},
       eprint={2406.12150},
       archivePrefix={arXiv},

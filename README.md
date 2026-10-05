@@ -4,9 +4,9 @@
 [![HuggingFace Datasets](https://img.shields.io/badge/🤗-Datasets-FFD21E)](https://huggingface.co/datasets/geshijoker/chaosmining)
 [![DOI](https://img.shields.io/badge/DOI-10.57967/hf/2482-blue)](https://huggingface.co/datasets/geshijoker/chaosmining)
 
-Source code of ["ChaosMining: A Benchmark to Evaluate Post-Hoc Local Attribution Methods in Low SNR Environments"](https://arxiv.org/abs/2406.12150).
+Source code of ["ChaosMining: Benchmarking Post-Hoc Attribution with Sparse Informative Features in High Dimensions"](https://arxiv.org/abs/2406.12150).
 
-A comprehensive benchmarking framework for evaluating post-hoc local attribution methods (e.g., Integrated Gradients, Saliency, DeepLift, Guided Backprop) in low Signal-to-Noise Ratio (SNR) environments, spanning **audio processing**, **vision recognition**, and **symbolic simulation** modalities.
+ChaosMining is a benchmark of synthetic data spanning **audio processing**, **vision recognition**, and **symbolic simulation** modalities in which the truly informative features are known and sparse. It shows that the best post-hoc attribution method changes with the model and the setting, and that simple gradient methods often hold their own against costlier ones at much lower compute.
 
 ---
 

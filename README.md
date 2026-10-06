@@ -311,10 +311,10 @@ Replace `--model_name` with any of: `RNN`, `LSTM`, `TCN`, `TRAN`, `Wav2Vec2Model
 ## Citation
 
 ```bibtex
-@misc{shi2024chaosminingbenchmarkevaluateposthoc,
-      title={ChaosMining: Benchmarking Post-Hoc Attribution with Sparse Informative Features in High Dimensions}, 
+@misc{shi2026chaosminingbenchmarkingposthocattribution,
+      title={CHAOSMINING: Benchmarking Post-Hoc Attribution with Sparse Informative Features in High Dimensions}, 
       author={Ge Shi and Fangyi Liu and Ziwen Kan and Menglin Liu},
-      year={2024},
+      year={2026},
       eprint={2406.12150},
       archivePrefix={arXiv},
       primaryClass={cs.LG},
